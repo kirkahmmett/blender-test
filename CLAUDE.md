@@ -75,7 +75,7 @@ export_glb.export_glb("exp01_ad", source="selection",
 - PS1 bütçesi: prop ≤ 500 üçgen, karakter ≤ 1500. Dokular kare, 64–256 px, nearest. Normal map yok, mümkünse vertex color.
 - Godot kodu: GDScript, tipli, tab girinti. Ortak şeyler `shared/` altına.
 - Git: `main` dalı, ilk commit 51920be (8 Ekim 2026). Kimlik yalnızca repo için ayarlı (ahmetenes058). `.gitignore`: `.godot/`, `__pycache__/`, `*.blend1`.
-- **Otomatik commit (kullanıcı isteği, 8 Ekim 2026):** Kullanıcı bir adımı onayladığında ("tamam", "evet", "böyle kalsın", "geç" gibi) ya da bir iş doğrulanıp bittiğinde, sormadan commit at. Mesaj Türkçe, ne yapıldığını özetlesin. Yalnızca o adımın dosyalarını ekle; yarım kalmış ya da onay bekleyen işi commit etme. Uzak repo: `origin` = https://github.com/kirkahmmett/blender-test (private, 8 Ekim 2026'da bağlandı; giriş Git Credential Manager'da kayıtlı). Commit'ten sonra kısa hash'i kullanıcıya söyle.
+- **Otomatik commit + push (kullanıcı isteği, 8 Ekim 2026):** Her commit'ten hemen sonra `git push` da yap (kullanıcı onayladı, ayrıca sorma). Push başarısız olursa (ağ, giriş, çakışma) zorlamadan (`--force` yok) dur ve kullanıcıya bildir. Kullanıcı bir adımı onayladığında ("tamam", "evet", "böyle kalsın", "geç" gibi) ya da bir iş doğrulanıp bittiğinde, sormadan commit at. Mesaj Türkçe, ne yapıldığını özetlesin. Yalnızca o adımın dosyalarını ekle; yarım kalmış ya da onay bekleyen işi commit etme. Uzak repo: `origin` = https://github.com/kirkahmmett/blender-test (private, 8 Ekim 2026'da bağlandı; giriş Git Credential Manager'da kayıtlı). Commit'ten sonra kısa hash'i kullanıcıya söyle.
 
 ## Test komutları (GODOT_EXE bilindikten sonra)
 
