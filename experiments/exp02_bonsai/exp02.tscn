@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://dwt88ajaaiem3" path="res://shared/scripts/model_spinner.gd" id="1_spin"]
+
+[node name="Exp02" type="Node3D"]
+script = ExtResource("1_spin")
+model_paths = PackedStringArray("res://assets/models/bonsai_stage1.glb", "res://assets/models/bonsai_stage2.glb", "res://assets/models/bonsai_stage3.glb")
+style = 1
+spacing = 0.75
+spin_speed = 0.4

@@ -1,0 +1,7 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Python / Blender
+__pycache__/
+*.blend1
