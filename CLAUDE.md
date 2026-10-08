@@ -74,7 +74,7 @@ export_glb.export_glb("exp01_ad", source="selection",
 - İsimlendirme: `snake_case`. Collider için obje adına `-col`, `-convcol`, `-colonly` ekle.
 - PS1 bütçesi: prop ≤ 500 üçgen, karakter ≤ 1500. Dokular kare, 64–256 px, nearest. Normal map yok, mümkünse vertex color.
 - Godot kodu: GDScript, tipli, tab girinti. Ortak şeyler `shared/` altına.
-- Godot'un varsayılan `.gitignore` dosyası var, ama `git init` henüz yapılmadı. İstenirse `git init` yap.
+- Git: `main` dalı, ilk commit 51920be (8 Ekim 2026). Kimlik yalnızca repo için ayarlı (ahmetenes058). `.gitignore`: `.godot/`, `__pycache__/`, `*.blend1`.
 
 ## Test komutları (GODOT_EXE bilindikten sonra)
 
