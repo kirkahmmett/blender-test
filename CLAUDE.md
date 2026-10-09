@@ -37,6 +37,9 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 - Çıktılar: `blender/props/<ad>.blend` (kullanıcı açar ya da Append eder), `blender/props/textures/<ad>.png`, `assets/models/<ad>.glb`, önizleme PNG'si (Workbench render).
 - Sonra `experiments/expNN_ad/expNN.tscn` sahnesi `shared/scripts/model_spinner.gd`'yi kullanır; `model_paths` (yan yana dizilir), `style` (0 = PS1, 1 = PASTEL; pastelde malzeme adı sonekine göre `PASTEL_PRESETS`), `spacing`, `spin_speed` ayarlanır. Pencereli `--write-movie` ile karelere bakıp doğrula.
 - Örnek ve şablon: `blender/props/make_crate.py` (bmesh ile kutu parçaları, parça başına UV yönü, prosedürel piksel doku, vertex color ile ton + sahte AO).
+- **Elle düzenleme koruması (`blender/lib/propkit.py`):** Üretici script'ler `.blend`'i `propkit.save_generated()` ile kaydeder; içerik parmak izi "propkit_fingerprint" Text bloğuna yazılır (scene property değil: glTF'e sızar). Üretimden önce `propkit.guard_overwrite()` dosyayı açıp karşılaştırır; içerik değiştiyse **durur**. Yalnızca açıp kaydetmek uyarı vermez. `--force` eskisini `blender/props/_backup/`'a (git dışı) yedekleyip üstüne yazar; **`--force`'u kullanıcıya sormadan kullanma.** Elle düzenlenmiş dosyayı Godot'a göndermek için yeniden üretme, yalnızca export et: `"<BLENDER_EXE>" --background blender/props/<ad>.blend --python blender/tools/export_props.py` (`prop_style` olan her obje orijinde `assets/models/<obje adı>.glb`).
+- Üretmeden önce MCP ile (ya da süreç listesinden) kullanıcının Blender'ında aynı `.blend`'in açık olmadığını kontrol et; açıksa kullanıcı sonra kaydedince bizim yazdığımızı ezer.
+- `make_bonsai.py --export` yalnızca `--part all` ile çalışır (bonsai.blend üç aşamayı birlikte tutar).
 - **Galeri bilgisi (zorunlu):** Her prop objesine custom property yaz: `obj["prop_name"]` (Türkçe görünen ad), `obj["prop_style"]` (`"ps1"` | `"pastel"`), `obj["prop_placement"]` (`"floor"` | `"pedestal"`). glTF extras olarak gider; Godot `MeshInstance3D`'nin `extras` metadata'sına koyar (`PropStyle.extras()` okur). Bilgisi olmayan model galeride PS1 + yere konur.
 
 ## Galeri (exp03) — FPS ile propları gezme
@@ -57,7 +60,9 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 blender-test/
 ├─ project.godot
 ├─ blender/export_glb.py        # Blender -> .glb export yardımcısı
-├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/
+├─ blender/lib/propkit.py       # ortak prop kiti: parmak izi koruması, export
+├─ blender/tools/export_props.py # elle düzenlenmiş .blend için yalnızca export
+├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/, _backup/ (git dışı)
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)
 ├─ shared/shaders/ps1_spatial.gdshader
 ├─ shared/shaders/pastel_spatial.gdshader   # PS1 dışı yumuşak/pastel stil

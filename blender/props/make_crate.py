@@ -1,7 +1,9 @@
 """Ahşap sandık üretici (PS1 tarzı prop).
 
 Arka planda çalıştır (açık Blender oturumuna dokunmaz):
-    blender --background --factory-startup --python blender/props/make_crate.py -- [preview.png]
+    blender --background --factory-startup --python blender/props/make_crate.py -- [preview.png] [--force]
+
+.blend elle düzenlendiyse üstüne yazmaz ve durur (bkz. blender/lib/propkit.py).
 
 Çıktılar:
     blender/props/wooden_crate.blend          kaynak dosya (Append ile alınabilir)
@@ -9,6 +11,7 @@ Arka planda çalıştır (açık Blender oturumuna dokunmaz):
     assets/models/wooden_crate.glb            Godot'a giden model
 """
 
+import argparse
 import math
 import os
 import random
@@ -21,6 +24,9 @@ from mathutils import Matrix, Vector
 NAME = "wooden_crate"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, os.path.join(PROJECT_DIR, "blender", "lib"))
+import propkit  # noqa: E402
+
 TEX_DIR = os.path.join(HERE, "textures")
 
 SIZE = 0.8          # dış ölçü (m)
@@ -174,6 +180,20 @@ def assign_uv_and_color(bm, parts):
 # ---------------------------------------------------------------- ana akış
 
 def main():
+    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    ap = argparse.ArgumentParser()
+    ap.add_argument("preview", nargs="?", help="önizleme PNG yolu")
+    ap.add_argument("--force", action="store_true", help="elle düzenlenmiş .blend'i yedekleyip üstüne yaz")
+    args = ap.parse_args(argv)
+
+    # doku dahil hiçbir şey yazılmadan önce: elle düzenlenmiş dosyanın üstüne yazma
+    blend_path = os.path.join(HERE, NAME + ".blend")
+    try:
+        propkit.guard_overwrite(blend_path, args.force)
+    except propkit.OverwriteRefused as e:
+        print("[make_crate] DURDU:", e)
+        return
+
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.unit_settings.scale_length = 1.0
@@ -202,19 +222,12 @@ def main():
     obj["prop_style"] = "ps1"
     obj["prop_placement"] = "floor"
 
-    blend_path = os.path.join(HERE, NAME + ".blend")
-    bpy.ops.wm.save_as_mainfile(filepath=blend_path, relative_remap=True)
-
-    sys.path.insert(0, os.path.join(PROJECT_DIR, "blender"))
-    import export_glb
-    res = export_glb.export_glb(NAME, source="collection", collection_name=NAME, project_dir=PROJECT_DIR)
-    print("[make_crate] blend:", blend_path)
-    print("[make_crate] glb:", res)
+    propkit.save_generated(blend_path)
+    propkit.export_props([obj])
 
     # önizleme render'ı (kaydedilmez)
-    argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    if argv:
-        render_preview(argv[0], obj)
+    if args.preview:
+        render_preview(args.preview, obj)
 
 
 def render_preview(path, obj):

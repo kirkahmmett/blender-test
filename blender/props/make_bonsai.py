@@ -4,7 +4,9 @@ PS1 kurallarının dışında bir stil deneyi: med poly, smooth gölgelendirme, 
 
 Arka planda çalıştır (açık Blender oturumuna dokunmaz):
     blender --background --factory-startup --python blender/props/make_bonsai.py -- \
-        --part pot|stage1|stage2|stage3|all [--preview out.png] [--export]
+        --part pot|stage1|stage2|stage3|all [--preview out.png] [--export [--force]]
+
+--export yalnızca --part all ile; bonsai.blend elle düzenlendiyse üstüne yazmaz (propkit).
 
 Çıktılar (--export ile):
     blender/props/bonsai.blend               üç aşama yan yana, her biri kendi koleksiyonunda
@@ -22,6 +24,9 @@ from mathutils import Vector, noise
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(os.path.dirname(HERE))
+BLEND_PATH = os.path.join(HERE, "bonsai.blend")
+sys.path.insert(0, os.path.join(PROJECT_DIR, "blender", "lib"))
+import propkit  # noqa: E402
 
 SEED = 11
 
@@ -556,7 +561,19 @@ def main():
     ap.add_argument("--preview")
     ap.add_argument("--export", action="store_true")
     ap.add_argument("--front", action="store_true", help="önizlemeyi tam önden çek")
+    ap.add_argument("--force", action="store_true", help="elle düzenlenmiş .blend'i yedekleyip üstüne yaz")
     args = ap.parse_args(argv)
+
+    if args.export:
+        # bonsai.blend üç aşamayı birlikte tutar; tek parçayla kaydetmek diğerlerini silerdi
+        if args.part != "all":
+            print("[make_bonsai] DURDU: --export yalnızca --part all ile kullanılabilir.")
+            return
+        try:
+            propkit.guard_overwrite(BLEND_PATH, args.force)
+        except propkit.OverwriteRefused as e:
+            print("[make_bonsai] DURDU:", e)
+            return
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
@@ -581,21 +598,8 @@ def main():
 
 def export_all(objs):
     """.blend'i kaydet (aşamalar yan yana), her aşamayı orijinde .glb olarak yaz."""
-    blend_path = os.path.join(HERE, "bonsai.blend")
-    bpy.ops.wm.save_as_mainfile(filepath=blend_path)
-    print("[make_bonsai] blend:", blend_path)
-
-    sys.path.insert(0, os.path.join(PROJECT_DIR, "blender"))
-    import export_glb
-    export_glb.TRI_BUDGET = 6000   # stil istisnası: med poly
-    for obj in objs:
-        saved = obj.location.copy()
-        obj.location = (0, 0, 0)
-        bpy.context.view_layer.update()
-        res = export_glb.export_glb(obj.name, source="collection", collection_name=obj.name,
-                                    project_dir=PROJECT_DIR)
-        obj.location = saved
-        print("[make_bonsai] glb:", res["path"], res["triangles"], res["warnings"])
+    propkit.save_generated(BLEND_PATH)
+    propkit.export_props(objs, tri_budget=6000)   # stil istisnası: med poly
 
 
 main()

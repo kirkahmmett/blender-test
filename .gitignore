@@ -5,3 +5,6 @@
 # Python / Blender
 __pycache__/
 *.blend1
+
+# propkit --force yedekleri
+blender/props/_backup/
