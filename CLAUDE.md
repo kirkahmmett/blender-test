@@ -37,6 +37,15 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 - Çıktılar: `blender/props/<ad>.blend` (kullanıcı açar ya da Append eder), `blender/props/textures/<ad>.png`, `assets/models/<ad>.glb`, önizleme PNG'si (Workbench render).
 - Sonra `experiments/expNN_ad/expNN.tscn` sahnesi `shared/scripts/model_spinner.gd`'yi kullanır; `model_paths` (yan yana dizilir), `style` (0 = PS1, 1 = PASTEL; pastelde malzeme adı sonekine göre `PASTEL_PRESETS`), `spacing`, `spin_speed` ayarlanır. Pencereli `--write-movie` ile karelere bakıp doğrula.
 - Örnek ve şablon: `blender/props/make_crate.py` (bmesh ile kutu parçaları, parça başına UV yönü, prosedürel piksel doku, vertex color ile ton + sahte AO).
+- **Galeri bilgisi (zorunlu):** Her prop objesine custom property yaz: `obj["prop_name"]` (Türkçe görünen ad), `obj["prop_style"]` (`"ps1"` | `"pastel"`), `obj["prop_placement"]` (`"floor"` | `"pedestal"`). glTF extras olarak gider; Godot `MeshInstance3D`'nin `extras` metadata'sına koyar (`PropStyle.extras()` okur). Bilgisi olmayan model galeride PS1 + yere konur.
+
+## Galeri (exp03) — FPS ile propları gezme
+
+- `experiments/exp03_gallery/exp03.tscn`: `assets/models/*.glb`'yi tarar (`exclude` listesi hariç, varsayılan `test_cube`), bilgiye göre stil + yer/kaide (0.6×0.8×0.6 m) ile sıraya dizer, her mesh'e convex çarpışma ekler. Yeni .glb = galeride yeni sergi, ek iş yok.
+- `shared/scripts/fps_player.gd` (`FpsPlayer`): çarpışma ve kamerayı kendisi kurar. WASD, Shift, Space, F uçma (Space/Ctrl), Esc fare. Eylemler çalışma anında `InputMap`'e eklenir (fiziksel tuş), `project.godot`'a dokunulmaz. `controls_enabled` ile kapatılabilir.
+- `shared/scripts/prop_style.gd` (`PropStyle`): `apply(root, style)`, `extras(root)`, `local_aabb(root)`; spinner ve galeri ortak kullanır.
+- Stüdyo ışığı Compatibility'de kolay patlar: sky ambient 0.45, güneş 0.75, zemin taban rengi ~0.56. Değerleri artırırken kareye bakarak doğrula.
+- Test: geçici bir sahneden `Input.action_press` ve `InputEventMouseMotion` ile karakteri sür, `--write-movie` ile kaydet; geçici klasörü sonra sil.
 
 ## Klasör düzeni
 
@@ -48,7 +57,10 @@ blender-test/
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)
 ├─ shared/shaders/ps1_spatial.gdshader
 ├─ shared/shaders/pastel_spatial.gdshader   # PS1 dışı yumuşak/pastel stil
+├─ shared/shaders/grid_floor.gdshader   # 1 m / 5 m ızgaralı zemin
 ├─ shared/scripts/model_spinner.gd   # model önizleme sahnesi (model_paths, style)
+├─ shared/scripts/fps_player.gd      # FpsPlayer
+├─ shared/scripts/prop_style.gd      # PropStyle: stil, extras, aabb
 └─ experiments/expNN_ad/        # her deney kendi klasöründe
 ```
 
@@ -92,6 +104,7 @@ export_glb.export_glb("exp01_ad", source="selection",
 3. ~~İlk PS1 prop~~ — wooden_crate tamam. Sıradaki prop'ları kullanıcı seçer.
 4. ~~ps1_spatial renk dönüşümü~~ — tamam.
 5. ~~Tuşla odaklanma~~ — tamam: model_spinner'de 1–9 tek modele (kamera tween, diğerleri gizlenir), 0 hepsine. Kadraj dönüşten bağımsız silindir kutusuyla hesaplanır.
-6. Kullanıcı isterse affine UV / vertex titremesi değerlerini (`snap_grid`, `affine_amount`, `color_levels`) ayarla.
+6. Galeri 2. kontrol noktası (onaylı plan): E ile inceleme modu (360° döndürme, tekerlekle yakınlaştırma, Esc çıkış), sergi etiketleri (ad, üçgen, stil), wireframe tuşu. İnsan silueti istenmedi.
+7. Kullanıcı isterse affine UV / vertex titremesi değerlerini (`snap_grid`, `affine_amount`, `color_levels`) ayarla.
 
 Not: `Desktop\godot-blender-lab` ilk kurulan iskelet. Aktif çalışma burada, bu klasörde.

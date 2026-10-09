@@ -482,7 +482,19 @@ def build_part(part, collection):
     if part.startswith("stage"):
         build_tree(mb, int(part[-1]))
     obj = mb.to_object("bonsai_" + part, mats, collection)
+    # galeri bilgisi: glTF "extras" olarak Godot'a metadata diye gider
+    obj["prop_name"] = PART_NAMES[part]
+    obj["prop_style"] = "pastel"
+    obj["prop_placement"] = "pedestal"
     return obj
+
+
+PART_NAMES = {
+    "pot": "Bonsai saksısı",
+    "stage1": "Bonsai — 1. aşama (fidan)",
+    "stage2": "Bonsai — 2. aşama (orta)",
+    "stage3": "Bonsai — 3. aşama (olgun)",
+}
 
 
 def tri_count(obj):

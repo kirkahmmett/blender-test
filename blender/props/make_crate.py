@@ -197,6 +197,10 @@ def main():
     obj = bpy.data.objects.new(NAME, me)
     coll.objects.link(obj)
     bpy.context.view_layer.objects.active = obj
+    # galeri bilgisi: glTF "extras" olarak Godot'a metadata diye gider
+    obj["prop_name"] = "Ahşap sandık"
+    obj["prop_style"] = "ps1"
+    obj["prop_placement"] = "floor"
 
     blend_path = os.path.join(HERE, NAME + ".blend")
     bpy.ops.wm.save_as_mainfile(filepath=blend_path, relative_remap=True)

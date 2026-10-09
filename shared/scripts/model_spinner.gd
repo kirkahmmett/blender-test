@@ -7,17 +7,6 @@ extends Node3D
 
 enum Style { PS1, PASTEL }
 
-const PS1_SHADER := preload("res://shared/shaders/ps1_spatial.gdshader")
-const PASTEL_SHADER := preload("res://shared/shaders/pastel_spatial.gdshader")
-
-## Malzeme adı soneki -> pastel shader parametreleri (Blender'daki malzeme adlarıyla eşleşir).
-const PASTEL_PRESETS := {
-	"porcelain": {"roughness": 0.22, "specular": 0.6, "rim": 0.0},
-	"soil": {"roughness": 1.0, "specular": 0.1, "rim": 0.0},
-	"bark": {"roughness": 0.9, "specular": 0.15, "rim": 0.0},
-	"foliage": {"roughness": 0.85, "specular": 0.2, "rim": 0.35},
-}
-
 const VIEW_DIR := Vector3(0.0, 0.35, 1.0)
 const FOCUS_TIME := 0.6
 
@@ -187,40 +176,14 @@ func _spin_aabb(model: Node3D) -> AABB:
 
 
 func _apply_style(root: Node) -> void:
-	for node in root.find_children("*", "MeshInstance3D", true, false):
-		var mi := node as MeshInstance3D
-		if mi.mesh == null:
-			continue
-		for i in mi.mesh.get_surface_count():
-			var src := mi.mesh.surface_get_material(i) as BaseMaterial3D
-			var mat := ShaderMaterial.new()
-			if style == Style.PASTEL:
-				mat.shader = PASTEL_SHADER
-				var preset: Dictionary = _pastel_preset(src.resource_name if src else "")
-				for key: String in preset:
-					mat.set_shader_parameter(key, preset[key])
-			else:
-				mat.shader = PS1_SHADER
-				if src:
-					mat.set_shader_parameter("albedo_color", src.albedo_color)
-					if src.albedo_texture:
-						mat.set_shader_parameter("albedo_texture", src.albedo_texture)
-						mat.set_shader_parameter("use_texture", true)
-			mi.set_surface_override_material(i, mat)
-
-
-func _pastel_preset(material_name: String) -> Dictionary:
-	for suffix: String in PASTEL_PRESETS:
-		if material_name.ends_with(suffix):
-			return PASTEL_PRESETS[suffix]
-	return {}
+	PropStyle.apply(root, "pastel" if style == Style.PASTEL else "ps1")
 
 
 func _make_placeholder() -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = BoxMesh.new()
 	var mat := ShaderMaterial.new()
-	mat.shader = PS1_SHADER
+	mat.shader = PropStyle.PS1_SHADER
 	mat.set_shader_parameter("albedo_color", Color(0.9, 0.5, 0.3))
 	mi.material_override = mat
 	return mi
