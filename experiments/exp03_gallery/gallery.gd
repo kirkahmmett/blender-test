@@ -189,17 +189,35 @@ func _place_props(paths: PackedStringArray) -> void:
 ## Sergi üstünde, kameraya dönük ad + üçgen + stil etiketi (L ile aç/kapa).
 func _add_label(exhibit: Node3D, box: AABB) -> void:
 	var info: Dictionary = exhibit.get_meta("prop_info")
+	var issues: PackedStringArray = info.issues
 	var label := Label3D.new()
 	label.text = "%s\n%d üçgen · %s" % [info.name, info.triangles, info.style]
+	if not issues.is_empty():
+		label.text += "\n(!) %d sorun — E ile incele" % issues.size()
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	label.font_size = 40
 	label.pixel_size = 0.0022
 	label.outline_size = 10
-	label.modulate = Color(0.12, 0.14, 0.18)
+	label.modulate = _issue_color(issues)
 	label.outline_modulate = Color(1, 1, 1, 0.85)
 	label.position = Vector3(box.get_center().x, box.end.y + 0.22, box.get_center().z)
 	exhibit.add_child(label)
 	_labels.append(label)
+
+
+## Kalite durumuna göre etiket rengi: hata kırmızı, uyarı turuncu, temiz koyu gri.
+static func _issue_color(issues: PackedStringArray) -> Color:
+	for line in issues:
+		if line.begins_with("hata"):
+			return Color(0.78, 0.1, 0.1)
+	return Color(0.82, 0.45, 0.05) if not issues.is_empty() else Color(0.12, 0.14, 0.18)
+
+
+## Blender'daki kalite kontrolünün (propkit.check_object) glb'ye gömdüğü sorunlar.
+static func _qa_issues(extras: Dictionary) -> PackedStringArray:
+	if not extras.has("qa"):
+		return PackedStringArray(["uyarı: kalite kontrolünden geçmemiş (propkit ile export edilmedi)"])
+	return str(extras.qa).split("\n", false)
 
 
 ## Bir sergi: (gerekirse) kaide + model + çarpışma. Bilgiler "prop_info" metadata'sında.
@@ -223,6 +241,7 @@ func _make_exhibit(path: String) -> Node3D:
 		"style": style,
 		"placement": placement,
 		"triangles": _triangle_count(model),
+		"issues": _qa_issues(extras),
 		"path": path,
 		"model": model,
 	})

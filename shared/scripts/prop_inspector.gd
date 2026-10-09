@@ -134,6 +134,10 @@ func _info_text(info: Dictionary, size: Vector3) -> String:
 		"kaide" if info.get("placement", "") == "pedestal" else "yer"])
 	lines.append("Ölçü: %d × %d × %d cm (G×Y×D)" % [
 		roundi(size.x * 100.0), roundi(size.y * 100.0), roundi(size.z * 100.0)])
+	var issues: PackedStringArray = info.get("issues", PackedStringArray())
+	lines.append("Kalite kontrolü: temiz" if issues.is_empty() else "Kalite kontrolü:")
+	for issue in issues:
+		lines.append("  • " + issue)
 	lines.append("")
 	lines.append("Fare: döndür · Tekerlek: yakınlaştır · R: sıfırla · Esc/E: çık")
 	return "\n".join(lines)

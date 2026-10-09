@@ -34,6 +34,18 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 "<BLENDER_EXE>" --background --factory-startup --python blender/props/make_<ad>.py -- <scratchpad>/<ad>_preview.png
 ```
 
+**Tek komut (her değişiklikten sonra çalıştır):**
+
+```
+"<BLENDER_EXE>" --background --factory-startup --python blender/tools/build_all.py -- [--only <ad>] [--no-godot]
+```
+
+`blender/props/make_*.py`'leri kendisi bulur, her birini `--build` ile çalıştırır, kalite kontrolü tablosunu basar, Godot `--import` ve galeri açılış testini yapar. Sorun varsa çıkış kodu 1 ve "SONUÇ: SORUN VAR". Elle düzenlenmiş dosyalar "atlandı" olur (koruma). Godot yolu `blender/tools/paths.json` (ya da `GODOT_EXE`).
+
+- **Yeni üretici sözleşmesi:** `make_<ad>.py` `--build` (her şeyi üret + export) ve `--force` kabul etmeli; `propkit.guard_overwrite` → üret → `propkit.save_generated` → `propkit.export_props` sırasını izlemeli. Örnek: `make_crate.py`.
+- **Kalite kontrolü (`propkit.check_object`):** hata = prop_name/style/placement eksik ya da geçersiz, üçgen bütçesi aşımı (`BUDGETS`: ps1 500, pastel 6000), merkez noktası tabanda değil (±1 cm). uyarı = isim snake_case değil, ölçek/dönüş uygulanmamış, merkez izdüşüm dışında, ölçü 2 cm–10 m dışında, doku kare/2'nin kuvveti değil, PS1 dokuda >256 px ya da nearest değil. Sonuç glb'ye `qa` extras'ı olarak gömülür; galeride hata kırmızı, uyarı turuncu etiket; inceleme paneli listeler. `qa` anahtarı hiç yoksa "kontrolden geçmemiş" uyarısı.
+- `save_generated` içerik değişmediyse `.blend`'i yeniden kaydetmez (git'te ikili fark oluşmasın). glb export'u deterministik.
+
 - Çıktılar: `blender/props/<ad>.blend` (kullanıcı açar ya da Append eder), `blender/props/textures/<ad>.png`, `assets/models/<ad>.glb`, önizleme PNG'si (Workbench render).
 - Sonra `experiments/expNN_ad/expNN.tscn` sahnesi `shared/scripts/model_spinner.gd`'yi kullanır; `model_paths` (yan yana dizilir), `style` (0 = PS1, 1 = PASTEL; pastelde malzeme adı sonekine göre `PASTEL_PRESETS`), `spacing`, `spin_speed` ayarlanır. Pencereli `--write-movie` ile karelere bakıp doğrula.
 - Örnek ve şablon: `blender/props/make_crate.py` (bmesh ile kutu parçaları, parça başına UV yönü, prosedürel piksel doku, vertex color ile ton + sahte AO).
@@ -62,6 +74,8 @@ blender-test/
 ├─ blender/export_glb.py        # Blender -> .glb export yardımcısı
 ├─ blender/lib/propkit.py       # ortak prop kiti: parmak izi koruması, export
 ├─ blender/tools/export_props.py # elle düzenlenmiş .blend için yalnızca export
+├─ blender/tools/build_all.py    # tek komut: üret + kalite kontrolü + Godot testi
+├─ blender/tools/paths.json      # Godot exe yolu
 ├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/, _backup/ (git dışı)
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)
 ├─ shared/shaders/ps1_spatial.gdshader

@@ -562,7 +562,10 @@ def main():
     ap.add_argument("--export", action="store_true")
     ap.add_argument("--front", action="store_true", help="önizlemeyi tam önden çek")
     ap.add_argument("--force", action="store_true", help="elle düzenlenmiş .blend'i yedekleyip üstüne yaz")
+    ap.add_argument("--build", action="store_true", help="build_all sözleşmesi: --part all --export")
     args = ap.parse_args(argv)
+    if args.build:
+        args.part, args.export = "all", True
 
     if args.export:
         # bonsai.blend üç aşamayı birlikte tutar; tek parçayla kaydetmek diğerlerini silerdi
@@ -599,7 +602,7 @@ def main():
 def export_all(objs):
     """.blend'i kaydet (aşamalar yan yana), her aşamayı orijinde .glb olarak yaz."""
     propkit.save_generated(BLEND_PATH)
-    propkit.export_props(objs, tri_budget=6000)   # stil istisnası: med poly
+    propkit.export_props(objs)
 
 
 main()

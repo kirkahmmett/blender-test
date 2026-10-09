@@ -31,6 +31,10 @@ class OverwriteRefused(Exception):
     pass
 
 
+# guard_overwrite'ın "üretimden beri değişmemiş" bulduğu dosyalar: yol -> parmak izi
+_unchanged_on_disk = {}
+
+
 # ---------------------------------------------------------------- parmak izi
 
 def _floats(h, values, digits=5):
@@ -115,6 +119,7 @@ def guard_overwrite(blend_path, force=False):
     stored = text.as_string().strip() if text else None
     current = fingerprint()
     if stored == current:
+        _unchanged_on_disk[os.path.abspath(blend_path)] = current
         return
     reason = ("parmak izi yok (propkit öncesi ya da elle oluşturulmuş)" if stored is None
               else "içerik son üretimden sonra değişmiş (elle düzenlenmiş)")
@@ -133,11 +138,103 @@ def guard_overwrite(blend_path, force=False):
 
 
 def save_generated(blend_path):
-    """Parmak izini sahneye yazıp kaydet."""
+    """Parmak izini sahneye yazıp kaydet. Diskteki dosya aynı içeriğe sahipse kaydetmez:
+    .blend her kayıtta bayt düzeyinde değişir, git'te gereksiz ikili fark oluşmasın."""
+    fp = fingerprint()
+    if _unchanged_on_disk.get(os.path.abspath(blend_path)) == fp:
+        print("[propkit] blend değişmedi, kaydedilmedi:", blend_path)
+        return
     text = bpy.data.texts.get(FINGERPRINT_KEY) or bpy.data.texts.new(FINGERPRINT_KEY)
-    text.from_string(fingerprint())
+    text.from_string(fp)
     bpy.ops.wm.save_as_mainfile(filepath=blend_path, relative_remap=True)
     print("[propkit] blend:", blend_path)
+
+
+# ---------------------------------------------------------------- kalite kontrolü
+
+STYLES = ("ps1", "pastel")
+PLACEMENTS = ("floor", "pedestal")
+## Stil başına üçgen bütçesi. pastel: bonsai için kullanıcı ~5.8k'yı onayladı.
+BUDGETS = {"ps1": 500, "pastel": 6000}
+SIZE_MIN = 0.02   # m
+SIZE_MAX = 10.0   # m
+ORIGIN_TOL = 0.01  # m: taban z=0'dan en fazla bu kadar sapabilir
+PS1_TEX_MAX = 256
+QA_KEY = "qa"  # glTF extras ile Godot'a gider; "prop_" öneki yok ki parmak izine girmesin
+
+
+def _tri_count(obj):
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    ev = obj.evaluated_get(depsgraph)
+    me = ev.to_mesh()
+    me.calc_loop_triangles()
+    count = len(me.loop_triangles)
+    ev.to_mesh_clear()
+    return count
+
+
+def _local_bounds(obj):
+    """Konum hariç dönüşüm uygulanmış köşelerin sınırları (export orijinde yapılır)."""
+    m = obj.matrix_basis.copy()
+    m.translation = (0, 0, 0)
+    co = _attr_array(obj.data.vertices, "co", 3).reshape(-1, 3)
+    co = co @ np.array(m.to_3x3()).T
+    return co.min(axis=0), co.max(axis=0)
+
+
+def _images(obj):
+    seen = {}
+    for slot in obj.material_slots:
+        if slot.material and slot.material.node_tree:
+            for node in slot.material.node_tree.nodes:
+                if node.type == "TEX_IMAGE" and node.image:
+                    seen[node.image.name] = (node.image, node)
+    return seen.values()
+
+
+def check_object(obj):
+    """Prop kurallarına göre sorun listesi: [("hata"|"uyarı", mesaj), ...]."""
+    issues = []
+    err = lambda m: issues.append(("hata", m))  # noqa: E731
+    warn = lambda m: issues.append(("uyarı", m))  # noqa: E731
+
+    style = obj.get("prop_style")
+    if not obj.get("prop_name"):
+        err("prop_name eksik (galeride görünen ad)")
+    if style not in STYLES:
+        err(f"prop_style geçersiz: {style!r} (olmalı: {', '.join(STYLES)})")
+    if obj.get("prop_placement") not in PLACEMENTS:
+        err(f"prop_placement geçersiz: {obj.get('prop_placement')!r} (olmalı: {', '.join(PLACEMENTS)})")
+    if not all(c.islower() or c.isdigit() or c == "_" for c in obj.name):
+        warn(f"ad snake_case değil: {obj.name}")
+
+    tris = _tri_count(obj)
+    budget = BUDGETS.get(style)
+    if budget and tris > budget:
+        err(f"üçgen bütçesi aşıldı: {tris} / {budget} ({style})")
+
+    if any(abs(s - 1.0) > 1e-4 for s in obj.scale) or any(abs(r) > 1e-4 for r in obj.rotation_euler):
+        warn("ölçek/dönüş uygulanmamış (Ctrl+A); Godot'ta telafi gerekmesin")
+
+    lo, hi = _local_bounds(obj)
+    size = hi - lo
+    if abs(lo[2]) > ORIGIN_TOL:
+        err(f"merkez noktası tabanda değil: en alt nokta z={lo[2] * 100:.1f} cm (0 olmalı)")
+    if not (lo[0] <= 0 <= hi[0] and lo[1] <= 0 <= hi[1]):
+        warn("merkez noktası izdüşümün dışında (prop kaideden kayar)")
+    if size.max() > SIZE_MAX or size.max() < SIZE_MIN:
+        warn(f"ölçü olağan dışı: {size[0]:.2f} × {size[1]:.2f} × {size[2]:.2f} m (1 birim = 1 m)")
+
+    for img, node in _images(obj):
+        w, h = img.size
+        if w != h or w & (w - 1):
+            warn(f"doku kare ve 2'nin kuvveti değil: {img.name} {w}×{h}")
+        if style == "ps1":
+            if max(w, h) > PS1_TEX_MAX:
+                warn(f"PS1 doku büyük: {img.name} {w}×{h} (en fazla {PS1_TEX_MAX})")
+            if node.interpolation != "Closest":
+                warn(f"PS1 doku nearest değil: {img.name} ({node.interpolation})")
+    return issues, tris
 
 
 # ---------------------------------------------------------------- export
@@ -148,18 +245,22 @@ def prop_objects():
                   key=lambda o: o.name)
 
 
-def export_props(objs=None, tri_budget=None, project_dir=PROJECT_DIR):
-    """Her prop objesini kendi adıyla assets/models/<ad>.glb olarak, orijinde export et."""
+def export_props(objs=None, project_dir=PROJECT_DIR):
+    """Her prop objesini kontrol edip kendi adıyla assets/models/<ad>.glb olarak, orijinde
+    export et. Kontrol sonucu glb'ye "qa" extras'ı olarak gömülür (.blend'e kaydedilmez)."""
     import sys
     if BLENDER_DIR not in sys.path:
         sys.path.insert(0, BLENDER_DIR)
     import export_glb
-    if tri_budget:
-        export_glb.TRI_BUDGET = tri_budget
+    export_glb.TRI_BUDGET = max(BUDGETS.values())  # asıl bütçe kontrolü check_object'te
 
     view_layer = bpy.context.view_layer
     results = []
     for obj in objs or prop_objects():
+        issues, tris = check_object(obj)
+        obj[QA_KEY] = "\n".join(f"{level}: {msg}" for level, msg in issues)
+        for level, msg in issues:
+            print(f"[qa] {obj.name}: {level}: {msg}")
         saved = obj.location.copy()
         obj.location = (0, 0, 0)
         view_layer.update()
@@ -171,7 +272,11 @@ def export_props(objs=None, tri_budget=None, project_dir=PROJECT_DIR):
             res = export_glb.export_glb(obj.name, source="selection", project_dir=project_dir)
         finally:
             obj.location = saved
+            del obj[QA_KEY]
             view_layer.update()
-        print("[propkit] glb:", res["path"], res["triangles"], res["warnings"])
+        res["issues"] = issues
+        print(f"[propkit] glb: {res['path']} {tris} üçgen, "
+              f"{sum(1 for i in issues if i[0] == 'hata')} hata, "
+              f"{sum(1 for i in issues if i[0] == 'uyarı')} uyarı")
         results.append(res)
     return results

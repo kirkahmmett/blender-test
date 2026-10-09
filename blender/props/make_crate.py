@@ -184,6 +184,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("preview", nargs="?", help="önizleme PNG yolu")
     ap.add_argument("--force", action="store_true", help="elle düzenlenmiş .blend'i yedekleyip üstüne yaz")
+    ap.add_argument("--build", action="store_true", help="build_all sözleşmesi (sandık her çalışmada zaten üretilir)")
     args = ap.parse_args(argv)
 
     # doku dahil hiçbir şey yazılmadan önce: elle düzenlenmiş dosyanın üstüne yazma
