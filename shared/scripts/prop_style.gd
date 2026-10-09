@@ -1,3 +1,4 @@
+@tool
 class_name PropStyle
 ## Proplara stil shader'ı uygular ve Blender'dan gelen prop bilgisini okur.
 ## model_spinner ve galeri ortak kullanır.

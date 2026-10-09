@@ -46,6 +46,9 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 - `shared/scripts/prop_style.gd` (`PropStyle`): `apply(root, style)`, `extras(root)`, `local_aabb(root)`; spinner ve galeri ortak kullanır.
 - Stüdyo ışığı Compatibility'de kolay patlar: sky ambient 0.45, güneş 0.75, zemin taban rengi ~0.56. Değerleri artırırken kareye bakarak doğrula.
 - Test: geçici bir sahneden `Input.action_press` ve `InputEventMouseMotion` ile karakteri sür, `--write-movie` ile kaydet; geçici klasörü sonra sil.
+- **Fare bakışı tuzakları (9 Ekim 2026'da düzeltildi):** (1) Kilitli imleç ekran ortasındadır; oradaki bir Control (varsayılan `MOUSE_FILTER_STOP` olan ColorRect nişangâh) fare hareketini yutar ve `_unhandled_input`'a hiç ulaşmaz. Bakış/yörünge `_input`'ta, HUD öğeleri `MOUSE_FILTER_IGNORE`. (2) `canvas_items` ölçeklemesinde `relative` pencere boyutuyla ölçeklenir; bakış için `screen_relative` kullan. Testte sentetik fare olayının `position`'ını ekran ortasına ver, yoksa (1) gizlenir.
+- **Galeri @tool:** `gallery.gd` editörde de stüdyo + sergileri kurar (sahipsiz "Generated" düğümü, sahneye kaydedilmez); karakter/HUD/inceleme yalnızca oyunda. Inspector'da "Galeriyi yenile" düğmesi (`@export_tool_button`). `PropStyle` da `@tool`. Editörde çalışan koda `Engine.is_editor_hint()` koruması koy; editör açıkken ikinci bir editör örneği açma.
+- Pencereli testler gerçek fareyi kısa süre kilitler ve kullanıcının fare hareketi değerleri bozar; kesin değer gerekiyorsa headless çalıştır (headless'ta fare kilitlenmez, FpsPlayer bakışı test edilemez).
 - Test tuzakları: sentetik `InputEventKey`'de hem `keycode` hem `physical_keycode` doldur (`ui_cancel` keycode ile eşleşir, bizim eylemler fiziksel). Kayıt modunda sentetik fare hareketi FpsPlayer'a her zaman ulaşmayabilir; bakış açısını testte doğrudan `camera.rotation.x` ile ver.
 
 ## Klasör düzeni

@@ -1,8 +1,14 @@
+@tool
 extends Node3D
 ## exp03 — prop galerisi. assets/models/ içindeki her .glb'yi tarar ve bir sıra halinde dizer.
 ## Stil ve yerleşim Blender'dan gelen bilgiden okunur (PropStyle.extras):
 ##   prop_style: "ps1" | "pastel"   prop_placement: "floor" | "pedestal"   prop_name: görünen ad
 ## Bilgisi olmayan model PS1 stiliyle yere konur. Yeni bir .glb eklemek galeriye eklemek demektir.
+##
+## @tool: stüdyo ve sergiler editörde de kurulur (karakter, HUD ve inceleme yalnızca oyunda).
+## Hepsi sahibi (owner) olmayan "Generated" düğümünün altındadır, yani sahne dosyasına
+## kaydedilmez; her açılışta yeniden kurulur. Yeni .glb sonrası Inspector'daki
+## "Galeriyi yenile" düğmesi yeter.
 
 const MODELS_DIR := "res://assets/models/"
 const GRID_SHADER := preload("res://shared/shaders/grid_floor.gdshader")
@@ -19,11 +25,19 @@ const ACTIONS := {
 }
 
 ## Galeriye alınmayacak modeller (dosya adı, uzantısız).
-@export var exclude: PackedStringArray = ["test_cube"]
+@export var exclude: PackedStringArray = ["test_cube"]:
+	set(value):
+		exclude = value
+		if is_node_ready():
+			_rebuild()
+
+@export_tool_button("Galeriyi yenile", "Reload") var rebuild_button := _rebuild
 
 var player: FpsPlayer
 var inspector: PropInspector
 var exhibits: Array[Node3D] = []
+
+var _generated: Node3D  # stüdyo + sergiler; kaydedilmez
 
 var _aimed: Node3D  # nişangâhın üstünde olduğu sergi
 var _labels: Array[Label3D] = []
@@ -34,12 +48,16 @@ var _help: Label
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		_rebuild()
+		set_physics_process(false)
+		return
+
 	# wireframe görünümü, mesh'ler yüklenmeden önce açılmalı
 	RenderingServer.set_debug_generate_wireframes(true)
 	FpsPlayer.ensure_actions(ACTIONS)
 
-	_build_studio()
-	_place_props(_model_paths())
+	_rebuild()
 	_build_hud()
 
 	player = FpsPlayer.new()
@@ -51,7 +69,24 @@ func _ready() -> void:
 	inspector.closed.connect(_on_inspector_closed)
 
 
+## Stüdyoyu ve sergileri (yeniden) kur.
+func _rebuild() -> void:
+	if _generated:
+		_generated.free()
+	exhibits.clear()
+	_labels.clear()
+	_generated = Node3D.new()
+	_generated.name = "Generated"
+	add_child(_generated)
+	_build_studio()
+	_place_props(_model_paths())
+	if not Engine.is_editor_hint() and _help:
+		_refresh_overlay()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint() or player == null:
+		return
 	if event.is_action_pressed("toggle_wireframe"):
 		var vp := get_viewport()
 		vp.debug_draw = Viewport.DEBUG_DRAW_DISABLED if vp.debug_draw == Viewport.DEBUG_DRAW_WIREFRAME \
@@ -133,7 +168,7 @@ func _place_props(paths: PackedStringArray) -> void:
 	var spans: Array[Vector2] = []  # sergi başına (sol, sağ) x sınırı
 	for path in paths:
 		var exhibit := _make_exhibit(path)
-		add_child(exhibit)
+		_generated.add_child(exhibit)
 		exhibits.append(exhibit)
 		var box := PropStyle.local_aabb(exhibit)
 		_add_label(exhibit, box)
@@ -257,7 +292,7 @@ func _build_studio() -> void:
 	plane.material = floor_mat
 	floor_mesh.mesh = plane
 	floor_body.add_child(floor_mesh)
-	add_child(floor_body)
+	_generated.add_child(floor_body)
 
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color(0.6, 0.67, 0.76)
@@ -273,7 +308,7 @@ func _build_studio() -> void:
 	env.ambient_light_energy = 0.45
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
-	add_child(world_env)
+	_generated.add_child(world_env)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55.0, 35.0, 0.0)
@@ -281,7 +316,7 @@ func _build_studio() -> void:
 	sun.light_energy = 0.75
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 30.0
-	add_child(sun)
+	_generated.add_child(sun)
 
 
 func _build_hud() -> void:
@@ -290,6 +325,7 @@ func _build_hud() -> void:
 	add_child(layer)
 
 	_crosshair = ColorRect.new()
+	_crosshair.mouse_filter = Control.MOUSE_FILTER_IGNORE  # ekran ortasında; fareyi yutmasın
 	_crosshair.color = Color(1, 1, 1, 0.8)
 	_crosshair.size = Vector2(4, 4)
 	_crosshair.set_anchors_preset(Control.PRESET_CENTER)

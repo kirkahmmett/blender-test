@@ -72,14 +72,23 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
+## Fare bakışı _input'ta: kilitli imleç ekranın ortasında durur ve oradaki bir arayüz
+## öğesi (ör. nişangâh) hareketi _unhandled_input'a ulaşmadan yutabilir.
+## Yatayda sınırsız (360°), dikeyde ±89°. screen_relative: hassasiyet pencere boyutuna
+## (canvas_items ölçeklemesine) bağlı değişmesin.
+func _input(event: InputEvent) -> void:
+	if not controls_enabled or not event is InputEventMouseMotion \
+			or Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		return
+	var motion := event as InputEventMouseMotion
+	rotate_y(-motion.screen_relative.x * mouse_sensitivity)
+	camera.rotation.x = clampf(camera.rotation.x - motion.screen_relative.y * mouse_sensitivity, -1.55, 1.55)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not controls_enabled:
 		return
-	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		var motion := event as InputEventMouseMotion
-		rotate_y(-motion.relative.x * mouse_sensitivity)
-		camera.rotation.x = clampf(camera.rotation.x - motion.relative.y * mouse_sensitivity, -1.55, 1.55)
-	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
 			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif event.is_action_pressed("ui_cancel"):

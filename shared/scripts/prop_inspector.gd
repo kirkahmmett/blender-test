@@ -71,11 +71,12 @@ func _fit_distance() -> float:
 	return _radius / sin(deg_to_rad(camera.fov * 0.5)) * 1.1
 
 
-func _unhandled_input(event: InputEvent) -> void:
+## Fare _input'ta: imleç ortadayken arayüz öğeleri olayı yutamasın (bkz. FpsPlayer._input).
+func _input(event: InputEvent) -> void:
 	if not active or _closing:
 		return
 	if event is InputEventMouseMotion:
-		var rel := (event as InputEventMouseMotion).relative
+		var rel := (event as InputEventMouseMotion).screen_relative  # pencere ölçeğinden bağımsız
 		_yaw -= rel.x * mouse_sensitivity
 		_pitch = clampf(_pitch + rel.y * mouse_sensitivity, PITCH_MIN, PITCH_MAX)
 	elif event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
@@ -84,7 +85,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			_dist = maxf(_dist * ZOOM_STEP, _radius * 1.05)
 		elif button == MOUSE_BUTTON_WHEEL_DOWN:
 			_dist = minf(_dist / ZOOM_STEP, _radius * 8.0)
-	elif event.is_action_pressed("inspect_reset"):
+		else:
+			return
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not active or _closing:
+		return
+	if event.is_action_pressed("inspect_reset"):
 		_yaw = _start_yaw
 		_pitch = START_PITCH
 		_dist = _fit_distance()
@@ -133,6 +144,7 @@ func _build_panel() -> void:
 	layer.layer = 2
 	add_child(layer)
 	_panel = PanelContainer.new()
+	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN  # metin uzayınca sola doğru büyüsün
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.08, 0.09, 0.11, 0.72)
