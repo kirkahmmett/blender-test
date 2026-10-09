@@ -46,6 +46,7 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 - `shared/scripts/prop_style.gd` (`PropStyle`): `apply(root, style)`, `extras(root)`, `local_aabb(root)`; spinner ve galeri ortak kullanır.
 - Stüdyo ışığı Compatibility'de kolay patlar: sky ambient 0.45, güneş 0.75, zemin taban rengi ~0.56. Değerleri artırırken kareye bakarak doğrula.
 - Test: geçici bir sahneden `Input.action_press` ve `InputEventMouseMotion` ile karakteri sür, `--write-movie` ile kaydet; geçici klasörü sonra sil.
+- Test tuzakları: sentetik `InputEventKey`'de hem `keycode` hem `physical_keycode` doldur (`ui_cancel` keycode ile eşleşir, bizim eylemler fiziksel). Kayıt modunda sentetik fare hareketi FpsPlayer'a her zaman ulaşmayabilir; bakış açısını testte doğrudan `camera.rotation.x` ile ver.
 
 ## Klasör düzeni
 
@@ -104,7 +105,7 @@ export_glb.export_glb("exp01_ad", source="selection",
 3. ~~İlk PS1 prop~~ — wooden_crate tamam. Sıradaki prop'ları kullanıcı seçer.
 4. ~~ps1_spatial renk dönüşümü~~ — tamam.
 5. ~~Tuşla odaklanma~~ — tamam: model_spinner'de 1–9 tek modele (kamera tween, diğerleri gizlenir), 0 hepsine. Kadraj dönüşten bağımsız silindir kutusuyla hesaplanır.
-6. Galeri 2. kontrol noktası (onaylı plan): E ile inceleme modu (360° döndürme, tekerlekle yakınlaştırma, Esc çıkış), sergi etiketleri (ad, üçgen, stil), wireframe tuşu. İnsan silueti istenmedi.
+6. ~~Galeri 2. kontrol noktası~~ — tamam (9 Ekim 2026): `shared/scripts/prop_inspector.gd` (`PropInspector`): E ile yörünge kamerası (fare döndür, tekerlek yakınlaştır, R sıfırla, Esc/E çık; kamera yumuşak geçişle gider/döner), sağ üst panelde ad/üçgen/stil/ölçü (cm). Galeride Label3D etiketler (L), wireframe (G; `RenderingServer.set_debug_generate_wireframes(true)` mesh'ler yüklenmeden önce çağrılmalı). İnceleme sırasında etiket, nişangâh ve yardım gizlenir. İnsan silueti istenmedi.
 7. Kullanıcı isterse affine UV / vertex titremesi değerlerini (`snap_grid`, `affine_amount`, `color_levels`) ayarla.
 
 Not: `Desktop\godot-blender-lab` ilk kurulan iskelet. Aktif çalışma burada, bu klasörde.

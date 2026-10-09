@@ -9,15 +9,35 @@ const GRID_SHADER := preload("res://shared/shaders/grid_floor.gdshader")
 const PEDESTAL_SIZE := Vector3(0.6, 0.8, 0.6)
 const GAP := 1.6  # sergiler arası boşluk (m)
 const PLAYER_START := Vector3(0.0, 0.0, 4.5)
+const AIM_RANGE := 5.0  # E ile incelemek için en fazla uzaklık (m)
+
+const ACTIONS := {
+	"inspect": [KEY_E],
+	"inspect_reset": [KEY_R],
+	"toggle_wireframe": [KEY_G],
+	"toggle_labels": [KEY_L],
+}
 
 ## Galeriye alınmayacak modeller (dosya adı, uzantısız).
 @export var exclude: PackedStringArray = ["test_cube"]
 
 var player: FpsPlayer
+var inspector: PropInspector
 var exhibits: Array[Node3D] = []
+
+var _aimed: Node3D  # nişangâhın üstünde olduğu sergi
+var _labels: Array[Label3D] = []
+var _labels_on := true
+var _aim_label: Label
+var _crosshair: ColorRect
+var _help: Label
 
 
 func _ready() -> void:
+	# wireframe görünümü, mesh'ler yüklenmeden önce açılmalı
+	RenderingServer.set_debug_generate_wireframes(true)
+	FpsPlayer.ensure_actions(ACTIONS)
+
 	_build_studio()
 	_place_props(_model_paths())
 	_build_hud()
@@ -25,6 +45,73 @@ func _ready() -> void:
 	player = FpsPlayer.new()
 	player.position = PLAYER_START
 	add_child(player)
+
+	inspector = PropInspector.new()
+	add_child(inspector)
+	inspector.closed.connect(_on_inspector_closed)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("toggle_wireframe"):
+		var vp := get_viewport()
+		vp.debug_draw = Viewport.DEBUG_DRAW_DISABLED if vp.debug_draw == Viewport.DEBUG_DRAW_WIREFRAME \
+				else Viewport.DEBUG_DRAW_WIREFRAME
+	elif event.is_action_pressed("toggle_labels") and not inspector.active:
+		_labels_on = not _labels_on
+		_refresh_overlay()
+	elif event.is_action_pressed("inspect") and _aimed and not inspector.active:
+		var info: Dictionary = _aimed.get_meta("prop_info")
+		player.controls_enabled = false
+		inspector.open(info.model, info, player.camera)
+		_set_aim(null)
+		_refresh_overlay()
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+
+func _physics_process(_delta: float) -> void:
+	if inspector.active:
+		return
+	var cam := player.camera
+	var from := cam.global_position
+	var query := PhysicsRayQueryParameters3D.create(from, from - cam.global_basis.z * AIM_RANGE)
+	query.exclude = [player.get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	_set_aim(_exhibit_of(hit.collider) if hit else null)
+
+
+## Çarpışma gövdesinden yukarı çıkıp ait olduğu sergiyi bul.
+func _exhibit_of(node: Object) -> Node3D:
+	var n := node as Node
+	while n and n != self:
+		if n.has_meta("prop_info"):
+			return n as Node3D
+		n = n.get_parent()
+	return null
+
+
+func _set_aim(exhibit: Node3D) -> void:
+	_aimed = exhibit
+	if exhibit:
+		_aim_label.text = "E — İncele: %s" % exhibit.get_meta("prop_info").name
+	_aim_label.visible = exhibit != null
+	_crosshair.color = Color(1.0, 0.85, 0.3) if exhibit else Color(1, 1, 1, 0.8)
+
+
+func _on_inspector_closed() -> void:
+	player.controls_enabled = true
+	_refresh_overlay()
+
+
+## İnceleme sırasında nişangâh, yürüme yardımı ve 3D etiketler gizlenir
+## (etiketler incelenen propun önüne düşer; panel aynı bilgiyi verir).
+func _refresh_overlay() -> void:
+	var walking := not inspector.active
+	_crosshair.visible = walking
+	_help.visible = walking
+	for label in _labels:
+		label.visible = walking and _labels_on
 
 
 func _model_paths() -> PackedStringArray:
@@ -49,6 +136,7 @@ func _place_props(paths: PackedStringArray) -> void:
 		add_child(exhibit)
 		exhibits.append(exhibit)
 		var box := PropStyle.local_aabb(exhibit)
+		_add_label(exhibit, box)
 		var left := minf(box.position.x, -PEDESTAL_SIZE.x * 0.5)
 		var right := maxf(box.end.x, PEDESTAL_SIZE.x * 0.5)
 		spans.append(Vector2(left, right))
@@ -61,6 +149,22 @@ func _place_props(paths: PackedStringArray) -> void:
 	for i in exhibits.size():
 		exhibits[i].position.x = x - spans[i].x
 		x += spans[i].y - spans[i].x + GAP
+
+
+## Sergi üstünde, kameraya dönük ad + üçgen + stil etiketi (L ile aç/kapa).
+func _add_label(exhibit: Node3D, box: AABB) -> void:
+	var info: Dictionary = exhibit.get_meta("prop_info")
+	var label := Label3D.new()
+	label.text = "%s\n%d üçgen · %s" % [info.name, info.triangles, info.style]
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.font_size = 40
+	label.pixel_size = 0.0022
+	label.outline_size = 10
+	label.modulate = Color(0.12, 0.14, 0.18)
+	label.outline_modulate = Color(1, 1, 1, 0.85)
+	label.position = Vector3(box.get_center().x, box.end.y + 0.22, box.get_center().z)
+	exhibit.add_child(label)
+	_labels.append(label)
 
 
 ## Bir sergi: (gerekirse) kaide + model + çarpışma. Bilgiler "prop_info" metadata'sında.
@@ -185,15 +289,30 @@ func _build_hud() -> void:
 	layer.name = "Hud"
 	add_child(layer)
 
-	var dot := ColorRect.new()
-	dot.color = Color(1, 1, 1, 0.8)
-	dot.size = Vector2(4, 4)
-	dot.set_anchors_preset(Control.PRESET_CENTER)
-	dot.position -= dot.size * 0.5
-	layer.add_child(dot)
+	_crosshair = ColorRect.new()
+	_crosshair.color = Color(1, 1, 1, 0.8)
+	_crosshair.size = Vector2(4, 4)
+	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
+	_crosshair.position -= _crosshair.size * 0.5
+	layer.add_child(_crosshair)
 
-	var help := Label.new()
-	help.text = "WASD yürü · Shift koş · Space zıpla · F uç (Space/Ctrl yüksel/alçal) · Esc fareyi bırak"
-	help.add_theme_color_override("font_color", Color(0.15, 0.17, 0.2))
-	help.position = Vector2(16, 12)
-	layer.add_child(help)
+	_aim_label = Label.new()
+	_aim_label.add_theme_color_override("font_color", Color(1, 1, 1))
+	_aim_label.add_theme_color_override("font_outline_color", Color(0.1, 0.11, 0.14))
+	_aim_label.add_theme_constant_override("outline_size", 6)
+	_aim_label.add_theme_font_size_override("font_size", 20)
+	_aim_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_aim_label.visible = false
+	layer.add_child(_aim_label)
+	_aim_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM, Control.PRESET_MODE_KEEP_SIZE, 0)
+	_aim_label.offset_left = -400
+	_aim_label.offset_right = 400
+	_aim_label.offset_top = -120
+	_aim_label.offset_bottom = -90
+
+	_help = Label.new()
+	_help.text = "WASD yürü · Shift koş · Space zıpla · F uç (Space/Ctrl yüksel/alçal) · Esc fareyi bırak\n" \
+			+ "E incele · G wireframe · L etiketler"
+	_help.add_theme_color_override("font_color", Color(0.15, 0.17, 0.2))
+	_help.position = Vector2(16, 12)
+	layer.add_child(_help)
