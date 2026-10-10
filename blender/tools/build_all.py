@@ -18,6 +18,7 @@ Akış (bkz. blender/lib/buildkit.py):
      Değişmeyen glb'lere dokunulmaz, Godot boşuna yeniden import etmez.
   3. Godot: yalnızca bir glb değiştiyse; proje bir editörde açıksa komut satırından import
      yapılmaz (editör değişen dosyaları kendisi alır).
+  4. Katalog: CATALOG.md (görüntülü asset listesi + onay durumu) yazılır, bkz. blender/tools/catalog.py.
 Sorun (kalite "hata"sı, çöken üretici, Godot hatası) varsa çıkış kodu 1'dir.
 """
 
@@ -33,6 +34,8 @@ import bpy
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"))
 import buildkit  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import catalog  # noqa: E402
 
 
 def main():
@@ -170,6 +173,16 @@ def main():
         for line in lines:
             print("   ", line)
         failed |= not ok
+
+    # ---- katalog + onay durumu (bilgi amaçlı; derlemeyi başarısız saymaz)
+    rows, written = catalog.write_catalog()
+    counts = catalog.status_summary(rows)
+    print("\n== Katalog == " + ", ".join(f"{catalog.STATUSES[s][0]} {counts[s]}"
+                                          for s in catalog.STATUSES if counts.get(s))
+          + (" — CATALOG.md güncellendi" if written else ""))
+    changed = [r["name"] for r in rows if r["status"] == "changed"]
+    if changed:
+        print(f"    onaydan sonra değişti, yeniden incele: {', '.join(changed)}")
 
     total = time.perf_counter() - t_start
     print(f"\n[build_all] süre: üretim {t_build:.1f} s, Godot {t_godot:.1f} s, toplam {total:.1f} s "

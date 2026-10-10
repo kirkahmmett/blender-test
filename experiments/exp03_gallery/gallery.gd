@@ -44,6 +44,8 @@ var _generated: Node3D  # stüdyo + sergiler; kaydedilmez
 
 var _aimed: Node3D  # nişangâhın üstünde olduğu sergi
 var _hidden_pedestal: Node3D  # inceleme sırasında gizlenen kaide
+var _inspected: Node3D  # incelenen sergi (durum değişikliği için)
+var _status: Dictionary  # assets/asset_status.json (AssetStatus)
 var _labels: Array[Label3D] = []
 var _labels_on := true
 var _aim_label: Label
@@ -75,6 +77,7 @@ func _ready() -> void:
 	inspector = PropInspector.new()
 	add_child(inspector)
 	inspector.closed.connect(_on_inspector_closed)
+	inspector.status_requested.connect(_on_status_requested)
 
 
 ## Editörde: model klasörüne yeni ya da yeniden import edilmiş glb gelince galeriyi yenile
@@ -124,6 +127,7 @@ func _rebuild() -> void:
 	_generated = Node3D.new()
 	_generated.name = "Generated"
 	add_child(_generated)
+	_status = AssetStatus.load_all()
 	_build_studio()
 	_place_props(_model_paths())
 	if not Engine.is_editor_hint() and _help:
@@ -148,6 +152,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _hidden_pedestal:
 			_hidden_pedestal.visible = false
 		inspector.open(info.model, info, player.camera)
+		_inspected = _aimed
 		_set_aim(null)
 		_refresh_overlay()
 	else:
@@ -184,7 +189,21 @@ func _set_aim(exhibit: Node3D) -> void:
 	_crosshair.color = Color(1.0, 0.85, 0.3) if exhibit else Color(1, 1, 1, 0.8)
 
 
+## İncelemede 1–4: onay durumu assets/asset_status.json'a yazılır (karar anındaki glb özetiyle).
+func _on_status_requested(status: String) -> void:
+	if _inspected == null:
+		return
+	var info: Dictionary = _inspected.get_meta("prop_info")
+	var record := AssetStatus.set_status(info.asset, info.path, status)
+	_status[info.asset] = record
+	info.status = AssetStatus.effective(record, info.path)
+	info.record = record
+	_update_badge(_inspected)
+	inspector.refresh(info)
+
+
 func _on_inspector_closed() -> void:
+	_inspected = null
 	player.controls_enabled = true
 	if _hidden_pedestal:
 		_hidden_pedestal.visible = true
@@ -253,9 +272,33 @@ func _add_label(exhibit: Node3D, box: AABB) -> void:
 	label.outline_size = 10
 	label.modulate = _issue_color(issues)
 	label.outline_modulate = Color(1, 1, 1, 0.85)
-	label.position = Vector3(box.get_center().x, box.end.y + 0.22, box.get_center().z)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM   # satır sayısı ne olursa olsun yukarı büyür
+	label.position = Vector3(box.get_center().x, box.end.y + 0.12, box.get_center().z)
 	exhibit.add_child(label)
 	_labels.append(label)
+
+	# onay rozeti: ad etiketinin hemen altında, durum rengiyle
+	var badge := Label3D.new()
+	badge.name = "StatusBadge"
+	badge.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	badge.font_size = 34
+	badge.pixel_size = 0.0022
+	badge.outline_size = 10
+	badge.outline_modulate = Color(1, 1, 1, 0.85)
+	badge.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	badge.position = label.position - Vector3(0, 0.01, 0)
+	exhibit.add_child(badge)
+	_labels.append(badge)
+	_update_badge(exhibit)
+
+
+func _update_badge(exhibit: Node3D) -> void:
+	var badge := exhibit.get_node_or_null("StatusBadge") as Label3D
+	if badge == null:
+		return
+	var status: String = exhibit.get_meta("prop_info").status
+	badge.text = "● " + AssetStatus.LABELS[status]
+	badge.modulate = AssetStatus.COLORS[status]
 
 
 ## Kalite durumuna göre etiket rengi: hata kırmızı, uyarı turuncu, temiz koyu gri.
@@ -289,7 +332,11 @@ func _make_exhibit(path: String) -> Node3D:
 	PropStyle.apply(model, style)
 	_add_collision(model)
 
+	var record: Dictionary = _status.get(exhibit.name, {})
 	exhibit.set_meta("prop_info", {
+		"asset": exhibit.name,
+		"status": AssetStatus.effective(record, path),
+		"record": record,
 		"name": extras.get("prop_name", exhibit.name),
 		"style": style,
 		"placement": placement,

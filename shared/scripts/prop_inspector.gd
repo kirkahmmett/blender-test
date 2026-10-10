@@ -4,15 +4,21 @@ extends Node3D
 ## open() ile oyuncu kamerasından propun etrafına yumuşakça uçar; close() ile geri döner.
 ##
 ## Fare: döndür (aşağıdan bakmak dahil) · Tekerlek: yakınlaştır · R: görünümü sıfırla · Esc/E: çık
+## 1–4: onay durumu (taslak / incelemede / onaylı / reddedildi) — status_requested ile bildirilir,
+## yazmayı sahibi (galeri) yapar ve refresh() ile paneli günceller.
 
 signal closed
+signal status_requested(status: String)
 
 const PITCH_MIN := deg_to_rad(-85.0)
 const PITCH_MAX := deg_to_rad(85.0)
 const START_PITCH := deg_to_rad(18.0)
 const SMOOTHING := 10.0  # kamera hedefe ne hızla yaklaşır
 const ZOOM_STEP := 0.88
-const ACTIONS := {"inspect": [KEY_E], "inspect_reset": [KEY_R]}
+const ACTIONS := {
+	"inspect": [KEY_E], "inspect_reset": [KEY_R],
+	"status_1": [KEY_1], "status_2": [KEY_2], "status_3": [KEY_3], "status_4": [KEY_4],
+}
 
 @export var mouse_sensitivity := 0.005
 
@@ -29,6 +35,7 @@ var _return_camera: Camera3D  # kapanırken geri dönülecek kamera
 var _closing := false
 var _panel: PanelContainer
 var _info_label: Label
+var _size := Vector3.ZERO  # incelenen propun ölçüsü (panel yenilenirken)
 
 
 func _ready() -> void:
@@ -54,7 +61,8 @@ func open(model: Node3D, info: Dictionary, from_camera: Camera3D) -> void:
 	_return_camera = from_camera
 	camera.global_transform = from_camera.global_transform
 	camera.current = true
-	_info_label.text = _info_text(info, box.size)
+	_size = box.size
+	_info_label.text = _info_text(info, _size)
 	_panel.visible = true
 	active = true
 	_closing = false
@@ -65,6 +73,11 @@ func close() -> void:
 		return
 	_closing = true
 	_panel.visible = false
+
+
+## Bilgi değişti (ör. onay durumu): paneli yeniden yaz.
+func refresh(info: Dictionary) -> void:
+	_info_label.text = _info_text(info, _size)
 
 
 func _fit_distance() -> float:
@@ -99,11 +112,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_yaw = _start_yaw
 		_pitch = START_PITCH
 		_dist = _fit_distance()
+	elif _status_key(event) != "":
+		status_requested.emit(_status_key(event))
 	elif event.is_action_pressed("ui_cancel") or event.is_action_pressed("inspect"):
 		close()
 	else:
 		return
 	get_viewport().set_input_as_handled()
+
+
+func _status_key(event: InputEvent) -> String:
+	for i in AssetStatus.ORDER.size():
+		if event.is_action_pressed("status_%d" % (i + 1)):
+			return AssetStatus.ORDER[i]
+	return ""
 
 
 func _process(delta: float) -> void:
@@ -138,8 +160,18 @@ func _info_text(info: Dictionary, size: Vector3) -> String:
 	lines.append("Kalite kontrolü: temiz" if issues.is_empty() else "Kalite kontrolü:")
 	for issue in issues:
 		lines.append("  • " + issue)
+	if info.has("status"):
+		var record: Dictionary = info.get("record", {})
+		var line := "Durum: %s" % AssetStatus.LABELS[info.status]
+		if record.get("date", "") != "":
+			line += " (%s)" % record.date
+		lines.append(line)
+		if record.get("note", "") != "":
+			lines.append("  Not: " + str(record.note))
 	lines.append("")
 	lines.append("Fare: döndür · Tekerlek: yakınlaştır · R: sıfırla · Esc/E: çık")
+	if info.has("status"):
+		lines.append("1 taslak · 2 incelemede · 3 onaylı · 4 reddedildi")
 	return "\n".join(lines)
 
 

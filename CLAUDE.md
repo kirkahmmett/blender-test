@@ -76,6 +76,10 @@ Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici s�
 - **Görsel regresyon testi:** `shared/tests/visual_test.tscn` (pencereli, GPU). Her glb oyundaki shader'larıyla (PropStyle) sabit ışık/kameradan 2 açıdan (`on`, `ust`) 384² render edilir, `blender/build/golden/<asset>_<açı>.png` (git'te) ile karşılaştırılır. Fark: herhangi bir kanalı >3 değişen piksel oranı >%0.05 ya da ortalama >0.5. Aynı makinede render birebir tekrarlanır (fark 0). Fark varsa gerçek görüntü + fark haritası `blender/build/tmp/visual/`'a, çıkış 1. Altını olmayan yeni asset'in görüntüsü yazılır ("YENİ"; commit'te gözden geçir). Bilinçli görsel değişiklikten sonra: `<GODOT_EXE> --path . res://shared/tests/visual_test.tscn -- --update-golden` (kullanıcı görüntüyü onayladıktan sonra). `build_all --visual` çalıştırır. Kalibrasyon: domates kırmızısı EE9585 → E8897A değişimi %0.29 ile yakalandı.
 - **CI (`.github/workflows/build.yml`, ubuntu-24.04):** her push'ta Blender + Godot indirilir (önbellekli; sürümler workflow `env`'inde, `paths.json` ile aynı tutulmalı) → `build_all --full --no-godot --ci` → `git diff` ile çıktılar (glb, .blend, manifest; `"seconds"` satırları hariç) repodakiyle aynı mı → `build_all --ci` ile Godot import + galeri headless. `--ci`: sürüm uyuşmazlığı hata, Godot kontrolü glb değişmese de çalışır (editör açık mı kontrolü yapılmaz; yerelde editör açıkken kullanma). GPU testleri (`--visual`, `--perf`) CI'da yok, yerelde çalıştır. Repoda `gh` yok; sonuç GitHub → Actions sekmesinde.
 
+**Sanat yönetimi (Sprint 5, 11 Ekim 2026):**
+- **Onay durumu:** `assets/asset_status.json` (`{"<asset>": {status, sha256, date, note}}`; status = draft | review | approved | rejected; kaydı yoksa taslak). Galeride incelerken (E) **1** taslak · **2** incelemede · **3** onaylı · **4** reddedildi → `AssetStatus.set_status` (`shared/scripts/asset_status.gd`) karar anındaki glb sha256'sıyla yazar. Onaylı asset'in glb'si sonra değişirse durum **"değişti — yeniden incele"** olur (Godot `AssetStatus.effective`, Python `catalog.effective_status` aynı kural). Galeride ad etiketinin altında renkli rozet, inceleme panelinde "Durum" satırı. Not (`note`) şimdilik elle / Claude ile JSON'a yazılır. Kullanıcı sohbette "onayladım" derse Claude kaydı `sha256sum` ile aynı biçimde yazabilir. **Kullanıcının kararı olmadan durum yazma.**
+- **Katalog:** `CATALOG.md` (repo kökü, GitHub'da görüntülü vitrin) `blender/tools/catalog.py` ile her `build_all` sonunda yazılır (deterministik; değişmediyse dokunulmaz). Üretici başına tablo: altın görüntüler (ön + üst), ad, üçgen / bütçe (`prop_budget` ya da `propkit.BUDGETS`), stil, ölçü (glb'den, çarpışma gövdesi hariç), kalite, onay durumu. Tek başına: `"<BLENDER_EXE>" --background --factory-startup --python blender/tools/catalog.py`. `catalog.py` `blender/tools/`'ta, yani değişikliği asset'leri yeniden derletmez.
+
 - Gizli iç yüz temizliği yapılmadı: tek örnek sandığın iç içe kirişleri (toplam 204 üçgen), kazanç ölçülemeyecek kadar küçük; kaynak paylaşımlı köşeleri birleştirmek gölgelendirmeyi değiştirirdi.
 
 - **Alt süreç tuzağı:** `Popen(stdout=PIPE)` ile başlatılıp bitene kadar okunmayan süreç, boru dolunca kilitlenir (izleme modunda Godot import'u takıldı). Uzun süren alt süreçlerin çıktısını dosyaya yönlendir.
@@ -123,6 +127,10 @@ blender-test/
 ├─ blender/tools/paths.json      # Godot exe yolu + sabitlenmiş Blender/Godot sürümleri
 ├─ blender/build/golden/         # görsel regresyon altın görüntüleri (izlenir)
 ├─ shared/tests/visual_test.tscn # görsel regresyon testi (pencereli)
+├─ CATALOG.md                    # otomatik asset kataloğu (build_all yazar; elle düzenleme)
+├─ assets/asset_status.json      # onay durumu (galeride 1–4; ilk kararla oluşur)
+├─ blender/tools/catalog.py      # katalog + onay durumu (Python)
+├─ shared/scripts/asset_status.gd # onay durumu (Godot)
 ├─ .github/workflows/build.yml  # CI: sıfırdan derleme + tekrarlanabilirlik + Godot headless
 ├─ blender/specs/               # asset spec'leri (TOML); parts/ ortak parça verileri (saksılar)
 ├─ blender/styles/              # stil tokenları (pastel, ps1)
