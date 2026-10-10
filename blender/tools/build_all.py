@@ -8,6 +8,7 @@ Seçenekler:
     --jobs N       paralel Blender işçisi sayısı (varsayılan: çekirdek/2, en fazla 4)
     --force        elle düzenlenmiş .blend'leri yedekleyip yeniden üret (dikkat!)
     --no-godot     Godot import ve galeri testini atla
+    --perf         galeri performans testi (pencereli) + taban çizgisiyle karşılaştırma
 
 Akış (bkz. blender/lib/buildkit.py):
   1. Artımlı: girdisi ve çıktıları değişmeyen üreticiler atlanır (blender/build/manifest.json).
@@ -40,6 +41,7 @@ def main():
     ap.add_argument("--jobs", type=int, default=min(4, max(1, (os.cpu_count() or 2) // 2)))
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--no-godot", action="store_true")
+    ap.add_argument("--perf", action="store_true", help="galeri performans testi + taban çizgisi karşılaştırması")
     args = ap.parse_args(argv)
 
     t_start = time.perf_counter()
@@ -146,6 +148,13 @@ def main():
                 print("   ", line)
             failed |= bool(errors)
         t_godot = time.perf_counter() - t0
+
+    if args.perf:
+        print("\n== Performans (pencereli) ==")
+        ok, lines = buildkit.godot_perf()
+        for line in lines:
+            print("   ", line)
+        failed |= not ok
 
     total = time.perf_counter() - t_start
     print(f"\n[build_all] süre: üretim {t_build:.1f} s, Godot {t_godot:.1f} s, toplam {total:.1f} s "

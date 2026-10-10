@@ -63,6 +63,15 @@ Tek spec'i denemek / önizlemek:
 
 Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici süreç içinde yeniden üretilir (kaydet → yeni glb ~1 s). Editör açıksa editör kendisi import eder ve galeri (`gallery.gd`, `resources_reimported` / `filesystem_changed`) kendini yeniler; editör kapalıysa `godot --import` arka planda çalışır, izleyici beklemez. Manifesti build_all ile aynı anda iki süreç yazmasın: izleme açıkken build_all çalıştırma.
 
+**Oyun içi optimizasyon (Sprint 3, 10 Ekim 2026; `propkit.optimize`, `assetkit.run` her objeye uygular):**
+- **Malzeme birleştirme (pastel):** parçalar `<önek>_solid` (arka yüz çizilmez) + `<önek>_thin` (çift taraflı; `propkit.THIN_MATERIALS` = leaf, petal) olarak ikiye iner → prop başına ≤2 çizim çağrısı (bonsai 4→1, domates 7→2). Parçanın asıl malzeme kimliği **köşe renginin alfa kanalında** (id/255; alfa zaten kullanılmıyordu, Godot 8 bit saklar, ≤16 parça), adları `obj["prop_materials"]` (virgüllü, kimlik sırası) extras ile Godot'a gider. `pastel_common.gdshaderinc` `use_lut` ile `lut_roughness/specular/rim/tint[16]` dizilerinden okur; `PropStyle._pastel_lut` dizileri `PASTEL_PRESETS`'ten doldurur (ince ayar yine Godot'ta). Eski (parça başına malzeme) glb'ler eski yoldan çalışır. Yeni ince yüzey parçası: `THIN_MATERIALS`'a ekle. QA: >2 malzeme uyarı.
+- **Çarpışma:** modelin dışbükey zarfı `<obje>-convcolonly` çocuk objesi (Blender'da tel kafes, render'da gizli) → Godot import'ta StaticBody3D + ConvexPolygonShape3D (sandık 8, bonsai 176, domates 122 nokta). Galeri bu varsa açılışta çarpışma hesaplamaz. `export_props` objeyi çocuklarıyla seçer.
+- **LOD:** Godot'un otomatik LOD'u (`meshes/generate_lods=true`, varsayılan) Compatibility'de çalışıyor: uzak bakışta ekrandaki üçgen 38k → 3.6k. Ek iş yok.
+- **Import varsayılanı:** `project.godot` `[importer_defaults] scene = {"meshes/ensure_tangents": false}` (normal map yok). Ölçüm: Godot sıkıştırmalı mesh'te teğeti yine tutuyor, VRAM değişmedi (16.8 MB) — zararsız, kazancı yok.
+- **Performans testi:** `experiments/exp03_gallery/perf/perf_test.tscn` (pencereli; galeri `spawn_player=false`, fare kilitlenmez). 3 bakış noktası (genel / yakın / uzak) × 90 kare: kare süresi, çizim çağrısı, ekrandaki üçgen, obje, VRAM + galeri kurulum süresi; ekran görüntüleri `blender/build/tmp/perf/`. `blender/build/perf_baseline.json` (git'te) ile karşılaştırır: çizim çağrısı >%10 ya da kurulum >2×+20 ms artarsa GERİLEME, çıkış kodu 1. `-- --update-baseline` tabanı yazar (sergi sayısı değişince gerekir). `build_all --perf` bunu çalıştırır.
+- Sprint 3 ölçümü (RTX 4060, 8 sergi): galeri kurulumu ~560 → ~35 ms; çizim çağrısı genel 193 → 97, yakın 96 → 48, uzak 64 → 40; görüntü önce/sonra piksel farkı ortalama 0.02/255 (yalnızca ince kenarlarda çizim sırası farkı).
+- Gizli iç yüz temizliği yapılmadı: tek örnek sandığın iç içe kirişleri (toplam 204 üçgen), kazanç ölçülemeyecek kadar küçük; kaynak paylaşımlı köşeleri birleştirmek gölgelendirmeyi değiştirirdi.
+
 - **Alt süreç tuzağı:** `Popen(stdout=PIPE)` ile başlatılıp bitene kadar okunmayan süreç, boru dolunca kilitlenir (izleme modunda Godot import'u takıldı). Uzun süren alt süreçlerin çıktısını dosyaya yönlendir.
 
 - **Kod üreticisi sözleşmesi (özel durumlar):** `make_<ad>.py` `--build` (her şeyi üret + export) ve `--force` kabul etmeli; `propkit.guard_overwrite` → üret → `propkit.save_generated` → `propkit.export_props` sırasını izlemeli (`assetkit.run` aynı akışı uygular).
@@ -103,7 +112,8 @@ blender-test/
 ├─ blender/tools/watch.py        # izleme modu: kaydet → yeniden üret (~1 s)
 ├─ blender/tools/worker.py       # paralel derleme işçisi (build_all başlatır)
 ├─ blender/lib/buildkit.py       # derleme çekirdeği: girdi özeti, manifest, süreç içi çalıştırma, Godot
-├─ blender/build/manifest.json   # derleme kaydı (izlenir); tmp/ git dışı
+├─ blender/build/manifest.json   # derleme kaydı (izlenir); perf_baseline.json (izlenir); tmp/, perf_report.json git dışı
+├─ experiments/exp03_gallery/perf/  # performans testi (pencereli)
 ├─ blender/tools/paths.json      # Godot exe yolu
 ├─ blender/specs/               # asset spec'leri (TOML); parts/ ortak parça verileri (saksılar)
 ├─ blender/styles/              # stil tokenları (pastel, ps1)

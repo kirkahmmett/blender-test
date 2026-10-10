@@ -259,7 +259,94 @@ def check_object(obj):
                 warn(f"PS1 doku büyük: {img.name} {w}×{h} (en fazla {PS1_TEX_MAX})")
             if node.interpolation != "Closest":
                 warn(f"PS1 doku nearest değil: {img.name} ({node.interpolation})")
+
+    slots = len(obj.material_slots)
+    if slots > MAX_MATERIALS:
+        warn(f"{slots} malzeme = {slots} çizim çağrısı (hedef en fazla {MAX_MATERIALS}; "
+             "propkit.optimize ile birleştir)")
     return issues, tris
+
+
+# ---------------------------------------------------------------- oyun içi optimizasyon
+
+## Çift taraflı çizilecek ince yüzey malzemeleri (ad soneki). Geri kalanı kapalı gövde.
+THIN_MATERIALS = ("leaf", "petal")
+MAX_MATERIALS = 2          # prop başına hedef çizim çağrısı (kapalı + ince)
+COLLISION_SUFFIX = "-convcolonly"   # Godot: yalnızca dışbükey çarpışma (mesh çizilmez)
+
+
+def optimize(obj, prefix, style):
+    """Oyuna giden modeli hazırla: pastel malzemeleri birleştir, sade çarpışma gövdesi ekle."""
+    if style == "pastel":
+        merge_materials(obj, prefix)
+    add_collision_hull(obj)
+
+
+def merge_materials(obj, prefix):
+    """Malzemeleri "<prefix>_solid" (arka yüz çizilmez) ve "<prefix>_thin" (çift taraflı) olarak
+    ikiye indir: prop başına en fazla 2 çizim çağrısı. Her yüzün asıl malzeme kimliği köşe
+    renginin (zaten kullanılmayan) alfa kanalına id/255 olarak yazılır; adları obj["prop_materials"]
+    (virgüllü, kimlik sırasıyla) glTF extras'ıyla Godot'a gider. Godot'taki pastel shader
+    parlaklık / kenar ışığı / ton ayarlarını bu kimlikle PropStyle.PASTEL_PRESETS'ten okur."""
+    from meshkit import make_material
+
+    me = obj.data
+    names = [m.name.removeprefix(prefix + "_") for m in me.materials]
+    if len(names) <= 1:
+        return
+    thin = [n.endswith(THIN_MATERIALS) for n in names]
+
+    poly_mat = np.empty(len(me.polygons), dtype=np.int32)
+    me.polygons.foreach_get("material_index", poly_mat)
+    loop_total = np.empty(len(me.polygons), dtype=np.int32)
+    me.polygons.foreach_get("loop_total", loop_total)
+    loop_mat = np.repeat(poly_mat, loop_total)   # yüzler döngüleri sırayla tutar
+
+    col = me.color_attributes["Col"]
+    rgba = np.empty(len(col.data) * 4, dtype=np.float32)
+    col.data.foreach_get("color", rgba)
+    rgba[3::4] = loop_mat / 255.0
+    col.data.foreach_set("color", rgba)
+
+    used_thin = any(thin[i] for i in set(poly_mat.tolist()))
+    solid = make_material(f"{prefix}_solid", 0.8)
+    solid.use_backface_culling = True
+    me.materials.clear()
+    me.materials.append(solid)
+    if used_thin:
+        thin_mat = make_material(f"{prefix}_thin", 0.8)
+        thin_mat.use_backface_culling = False
+        me.materials.append(thin_mat)
+    new_index = np.array([1 if (used_thin and thin[i]) else 0 for i in range(len(names))], dtype=np.int32)
+    me.polygons.foreach_set("material_index", new_index[poly_mat])
+    me.update()
+    obj["prop_materials"] = ",".join(names)
+
+
+def add_collision_hull(obj):
+    """Modelin dışbükey zarfı, objenin çocuğu olarak "<ad>-convcolonly": Godot import'ta
+    StaticBody3D + ConvexPolygonShape3D olur. Oyun açılırken çarpışma hesaplanmaz."""
+    import bmesh
+
+    bm = bmesh.new()
+    co = _attr_array(obj.data.vertices, "co", 3).reshape(-1, 3)
+    for p in np.unique(np.round(co, 4), axis=0):
+        bm.verts.new(p.tolist())
+    res = bmesh.ops.convex_hull(bm, input=list(bm.verts))
+    # iç ve kullanılmayan listeleri örtüşebilir: tekilleştir (sıra korunur, sonuç deterministik)
+    waste = list(dict.fromkeys(g for g in res["geom_interior"] + res["geom_unused"]
+                               if isinstance(g, bmesh.types.BMVert)))
+    bmesh.ops.delete(bm, geom=waste, context="VERTS")
+    me = bpy.data.meshes.new(obj.name + COLLISION_SUFFIX)
+    bm.to_mesh(me)
+    bm.free()
+    hull = bpy.data.objects.new(obj.name + COLLISION_SUFFIX, me)
+    for coll in obj.users_collection:
+        coll.objects.link(hull)
+    hull.parent = obj
+    hull.display_type = "WIRE"
+    hull.hide_render = True
+    return hull
 
 
 # ---------------------------------------------------------------- export
@@ -296,6 +383,8 @@ def export_props(objs=None, project_dir=PROJECT_DIR):
         for o in view_layer.objects:
             o.select_set(False)
         obj.select_set(True)
+        for child in obj.children:      # çarpışma gövdesi vb. modelle birlikte gider
+            child.select_set(True)
         view_layer.objects.active = obj
         try:
             res = export_glb.export_glb(obj.name, source="selection", project_dir=tmp_dir)

@@ -1,0 +1,30 @@
+{
+  "build_ms": 39.3,
+  "exhibits": 8,
+  "gpu": "NVIDIA GeForce RTX 4060",
+  "model_triangles": 36647,
+  "renderer": "gl_compatibility",
+  "views": {
+    "genel": {
+      "draw": 97.0,
+      "ms": 0.6,
+      "objects": 97.0,
+      "prims": 38114.0,
+      "vram_mb": 16.8
+    },
+    "uzak": {
+      "draw": 40.0,
+      "ms": 0.69,
+      "objects": 40.0,
+      "prims": 3579.0,
+      "vram_mb": 16.8
+    },
+    "yakın": {
+      "draw": 48.0,
+      "ms": 0.75,
+      "objects": 48.0,
+      "prims": 42246.0,
+      "vram_mb": 16.8
+    }
+  }
+}

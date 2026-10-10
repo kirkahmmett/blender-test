@@ -17,7 +17,7 @@ import propkit  # noqa: E402
 
 objs = propkit.prop_objects()
 for o in bpy.data.objects:
-    if o.type == "MESH" and o not in objs:
+    if o.type == "MESH" and o not in objs and o.parent not in objs:   # çarpışma gövdesi vb. çocuklar hariç
         print(f"[qa] {o.name}: hata: galeri bilgisi (prop_style) yok; export edilmedi")
 if not objs:
     print("[export_props] prop_style bilgisi olan obje yok; hiçbir şey export edilmedi.")

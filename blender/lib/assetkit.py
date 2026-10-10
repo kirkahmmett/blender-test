@@ -189,6 +189,8 @@ def run(spec_path, argv):
         obj["prop_placement"] = asset["placement"]
         if "budget" in variant:
             obj["prop_budget"] = variant["budget"]
+        # oyun içi: pastelde ≤2 malzeme (çizim çağrısı), sade dışbükey çarpışma gövdesi
+        propkit.optimize(obj, asset["material_prefix"], style.godot)
         obj.location.x = (i - (len(chosen) - 1) / 2) * asset.get("spacing", 0.6)
         objs.append(obj)
         budget = f" (bütçe {variant['budget']})" if "budget" in variant else ""

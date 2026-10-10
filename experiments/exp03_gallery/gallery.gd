@@ -33,6 +33,9 @@ const ACTIONS := {
 
 @export_tool_button("Galeriyi yenile", "Reload") var rebuild_button := _rebuild
 
+## false: yalnızca stüdyo + sergiler (karakter, HUD, inceleme yok). Performans testi kullanır.
+@export var spawn_player := true
+
 var player: FpsPlayer
 var inspector: PropInspector
 var exhibits: Array[Node3D] = []
@@ -60,6 +63,9 @@ func _ready() -> void:
 	FpsPlayer.ensure_actions(ACTIONS)
 
 	_rebuild()
+	if not spawn_player:   # ör. performans testi: kendi kamerası var, fare kilitlenmez
+		set_physics_process(false)
+		return
 	_build_hud()
 
 	player = FpsPlayer.new()
@@ -318,6 +324,9 @@ func _make_pedestal() -> StaticBody3D:
 
 ## Her mesh'e dışbükey (convex) çarpışma: içinden geçilmez, hesap ucuz kalır.
 func _add_collision(model: Node3D) -> void:
+	# model kendi sade çarpışma gövdesiyle geldiyse (Blender'da "-convcolonly") hesaplama yok
+	if not model.find_children("*", "StaticBody3D", true, false).is_empty():
+		return
 	for node in model.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
 		if mi.mesh == null:

@@ -271,6 +271,18 @@ def godot_editor_open():
     return False
 
 
+PERF_SCENE = "res://experiments/exp03_gallery/perf/perf_test.tscn"
+
+
+def godot_perf():
+    """Galeri performans testi (pencereli: GPU gerekir; fare kilitlenmez). (geçti mi, [perf] satırları)."""
+    proc = subprocess.run([godot_exe(), "--path", PROJECT_DIR, PERF_SCENE], cwd=PROJECT_DIR,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    lines = [ln for ln in (proc.stdout + proc.stderr).splitlines()
+             if ln.startswith(("[perf]", "ERROR", "SCRIPT ERROR"))]
+    return proc.returncode == 0, lines
+
+
 def godot_check():
     """import + galeri açılış testi; [(adım, saniye, hata satırları)]."""
     exe = godot_exe()
