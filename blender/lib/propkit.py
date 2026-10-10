@@ -260,11 +260,88 @@ def check_object(obj):
             if node.interpolation != "Closest":
                 warn(f"PS1 doku nearest değil: {img.name} ({node.interpolation})")
 
+    for level, msg in check_topology(obj.data):
+        issues.append((level, msg))
+
     slots = len(obj.material_slots)
     if slots > MAX_MATERIALS:
         warn(f"{slots} malzeme = {slots} çizim çağrısı (hedef en fazla {MAX_MATERIALS}; "
              "propkit.optimize ile birleştir)")
     return issues, tris
+
+
+DEGENERATE_AREA = 1e-10    # m²: bundan küçük üçgen bozuk sayılır
+
+
+def check_topology(me):
+    """Mesh hijyeni: [("hata"|"uyarı", mesaj), ...]
+    - ters yüz: kenarı paylaşan iki yüz o kenarı aynı yönde dolaşıyorsa biri ters dönmüştür
+    - içi dışına dönmüş parça: kapalı bir parçanın işaretli hacmi negatif
+    - bozuk üçgen: alanı ~0 (gölgelendirmede ve LOD'da sorun çıkarır)
+    - manifold olmayan kenar: ikiden fazla yüzün paylaştığı kenar
+    Açık yüzeyler (yaprak, kapaksız tüp) normaldir; yalnızca tutarlılık aranır."""
+    import bmesh
+
+    issues = []
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.edges.ensure_lookup_table()
+    bm.faces.index_update()
+
+    flipped_edges = 0
+    multi_edges = 0
+    for e in bm.edges:
+        faces = e.link_faces
+        if len(faces) > 2:
+            multi_edges += 1
+        elif len(faces) == 2:
+            l0 = next(l for l in faces[0].loops if l.edge == e)
+            l1 = next(l for l in faces[1].loops if l.edge == e)
+            if l0.vert == l1.vert:      # iki yüz kenarı aynı köşeden başlatıyor: aynı yön
+                flipped_edges += 1
+    if flipped_edges:
+        issues.append(("hata", f"ters yüz: {flipped_edges} kenarda komşu yüzlerin yönü tutarsız "
+                               "(köşe sırası ters verilmiş yüz)"))
+    if multi_edges:
+        issues.append(("uyarı", f"{multi_edges} kenarı ikiden fazla yüz paylaşıyor (manifold değil)"))
+
+    # kapalı parçalar: her kenarı tam iki yüz paylaşan bağlı yüz kümeleri
+    seen = set()
+    inverted = 0
+    for f in bm.faces:
+        if f.index in seen:
+            continue
+        stack, island = [f], []
+        seen.add(f.index)
+        while stack:
+            cur = stack.pop()
+            island.append(cur)
+            for e in cur.edges:
+                for nb in e.link_faces:
+                    if nb.index not in seen:
+                        seen.add(nb.index)
+                        stack.append(nb)
+        closed = all(len(e.link_faces) == 2 for face in island for e in face.edges)
+        if not closed:
+            continue
+        volume = 0.0
+        for face in island:
+            vs = [l.vert.co for l in face.loops]
+            for i in range(1, len(vs) - 1):
+                volume += vs[0].dot(vs[i].cross(vs[i + 1])) / 6.0
+        if volume < 0:
+            inverted += 1
+    if inverted:
+        issues.append(("hata", f"{inverted} kapalı parça içi dışına dönmüş (normaller içe bakıyor)"))
+
+    bm.free()
+    me.calc_loop_triangles()
+    area = np.empty(len(me.loop_triangles), dtype=np.float64)
+    me.loop_triangles.foreach_get("area", area)
+    degenerate = int((area < DEGENERATE_AREA).sum())
+    if degenerate:
+        issues.append(("uyarı", f"{degenerate} bozuk (sıfır alanlı) üçgen"))
+    return issues
 
 
 # ---------------------------------------------------------------- oyun içi optimizasyon

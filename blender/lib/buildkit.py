@@ -243,6 +243,31 @@ def godot_exe():
         return json.load(f)["godot"]
 
 
+def expected_versions():
+    with open(os.path.join(TOOLS_DIR, "paths.json"), encoding="utf-8") as f:
+        return json.load(f).get("versions", {})
+
+
+def check_versions(blender_version, need_godot=True):
+    """Beklenen araç sürümleri (paths.json "versions") ile çalışanları karşılaştır; uyarı listesi.
+    Blender sürümü girdi özetine de girer: farklı sürüm her şeyi yeniden derler ve çıktıyı
+    değiştirebilir. Godot sürümü import sonucunu (mesh biçimi, LOD) etkiler."""
+    want = expected_versions()
+    warnings = []
+    if want.get("blender") and blender_version != want["blender"]:
+        warnings.append(f"Blender {blender_version} çalışıyor, beklenen {want['blender']} "
+                        "(çıktılar değişebilir; paths.json'u bilerek güncelle)")
+    if need_godot and want.get("godot"):
+        try:
+            out = subprocess.run([godot_exe(), "--version"], capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=30).stdout.strip()
+        except (OSError, subprocess.TimeoutExpired) as e:
+            out = f"çalıştırılamadı ({e})"
+        if not out.startswith(want["godot"]):
+            warnings.append(f"Godot {out or '?'} bulundu, beklenen {want['godot']}")
+    return warnings
+
+
 def godot_editor_open():
     """Bu proje bir Godot editöründe açık mı? Açıksa komut satırından import yapılmaz:
     iki süreç aynı .godot önbelleğine yazmasın, editör değişen dosyaları kendisi alır."""
@@ -272,15 +297,26 @@ def godot_editor_open():
 
 
 PERF_SCENE = "res://experiments/exp03_gallery/perf/perf_test.tscn"
+VISUAL_SCENE = "res://shared/tests/visual_test.tscn"
+
+
+def _godot_windowed(scene, prefix):
+    """Pencereli Godot testi (GPU gerekir; fare kilitlenmez). (geçti mi, ilgili satırlar)."""
+    proc = subprocess.run([godot_exe(), "--path", PROJECT_DIR, scene], cwd=PROJECT_DIR,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    lines = [ln for ln in (proc.stdout + proc.stderr).splitlines()
+             if ln.startswith((prefix, "ERROR", "SCRIPT ERROR"))]
+    return proc.returncode == 0, lines
 
 
 def godot_perf():
-    """Galeri performans testi (pencereli: GPU gerekir; fare kilitlenmez). (geçti mi, [perf] satırları)."""
-    proc = subprocess.run([godot_exe(), "--path", PROJECT_DIR, PERF_SCENE], cwd=PROJECT_DIR,
-                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
-    lines = [ln for ln in (proc.stdout + proc.stderr).splitlines()
-             if ln.startswith(("[perf]", "ERROR", "SCRIPT ERROR"))]
-    return proc.returncode == 0, lines
+    """Galeri performans testi + taban çizgisi karşılaştırması."""
+    return _godot_windowed(PERF_SCENE, "[perf]")
+
+
+def godot_visual():
+    """Görsel regresyon testi: her asset altın görüntüsüyle karşılaştırılır."""
+    return _godot_windowed(VISUAL_SCENE, "[visual]")
 
 
 def godot_check():

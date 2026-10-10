@@ -9,6 +9,7 @@ Seçenekler:
     --force        elle düzenlenmiş .blend'leri yedekleyip yeniden üret (dikkat!)
     --no-godot     Godot import ve galeri testini atla
     --perf         galeri performans testi (pencereli) + taban çizgisiyle karşılaştırma
+    --visual       görsel regresyon testi (pencereli): her asset altın görüntüyle karşılaştırılır
 
 Akış (bkz. blender/lib/buildkit.py):
   1. Artımlı: girdisi ve çıktıları değişmeyen üreticiler atlanır (blender/build/manifest.json).
@@ -42,6 +43,7 @@ def main():
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--no-godot", action="store_true")
     ap.add_argument("--perf", action="store_true", help="galeri performans testi + taban çizgisi karşılaştırması")
+    ap.add_argument("--visual", action="store_true", help="görsel regresyon testi (altın görüntüler)")
     args = ap.parse_args(argv)
 
     t_start = time.perf_counter()
@@ -55,6 +57,9 @@ def main():
         for stale in sorted(set(manifest["generators"]) - set(gens)):
             print(f"[build_all] manifestten çıkarıldı (birim artık yok): {stale}")
             del manifest["generators"][stale]
+
+    for warning in buildkit.check_versions(version, need_godot=not args.no_godot or args.perf):
+        print(f"[build_all] SÜRÜM UYARISI: {warning}")
 
     dirty = {}
     for g in gens:
@@ -148,6 +153,13 @@ def main():
                 print("   ", line)
             failed |= bool(errors)
         t_godot = time.perf_counter() - t0
+
+    if args.visual:
+        print("\n== Görsel regresyon (pencereli) ==")
+        ok, lines = buildkit.godot_visual()
+        for line in lines:
+            print("   ", line)
+        failed |= not ok
 
     if args.perf:
         print("\n== Performans (pencereli) ==")

@@ -70,6 +70,11 @@ Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici s�
 - **Import varsayılanı:** `project.godot` `[importer_defaults] scene = {"meshes/ensure_tangents": false}` (normal map yok). Ölçüm: Godot sıkıştırmalı mesh'te teğeti yine tutuyor, VRAM değişmedi (16.8 MB) — zararsız, kazancı yok.
 - **Performans testi:** `experiments/exp03_gallery/perf/perf_test.tscn` (pencereli; galeri `spawn_player=false`, fare kilitlenmez). 3 bakış noktası (genel / yakın / uzak) × 90 kare: kare süresi, çizim çağrısı, ekrandaki üçgen, obje, VRAM + galeri kurulum süresi; ekran görüntüleri `blender/build/tmp/perf/`. `blender/build/perf_baseline.json` (git'te) ile karşılaştırır: çizim çağrısı >%10 ya da kurulum >2×+20 ms artarsa GERİLEME, çıkış kodu 1. `-- --update-baseline` tabanı yazar (sergi sayısı değişince gerekir). `build_all --perf` bunu çalıştırır.
 - Sprint 3 ölçümü (RTX 4060, 8 sergi): galeri kurulumu ~560 → ~35 ms; çizim çağrısı genel 193 → 97, yakın 96 → 48, uzak 64 → 40; görüntü önce/sonra piksel farkı ortalama 0.02/255 (yalnızca ince kenarlarda çizim sırası farkı).
+**Güvence (Sprint 4, 10 Ekim 2026):**
+- **Topoloji kontrolü (`propkit.check_topology`, `check_object` çağırır):** hata = ters yüz (komşu yüzler ortak kenarı aynı yönde dolaşıyor), kapalı parça içi dışına dönmüş (işaretli hacim < 0). uyarı = manifold olmayan kenar (>2 yüz), bozuk üçgen (alan < 1e-10). Açık kenarlar (yaprak, düzlem) normaldir, uyarı vermez. 8 asset için ≤60 ms.
+- **Sürüm sabitleme:** `blender/tools/paths.json` `versions` (`blender`: `bpy.app.version_string`, `godot`: `godot --version` çıktısının başı). Farklıysa `build_all` "SÜRÜM UYARISI" basar (durdurmaz). Bilinçli sürüm yükseltmesinde: değerleri güncelle → `build_all --full --visual --perf` → farklar onaylanırsa altın görüntü/taban çizgisini güncelle.
+- **Görsel regresyon testi:** `shared/tests/visual_test.tscn` (pencereli, GPU). Her glb oyundaki shader'larıyla (PropStyle) sabit ışık/kameradan 2 açıdan (`on`, `ust`) 384² render edilir, `blender/build/golden/<asset>_<açı>.png` (git'te) ile karşılaştırılır. Fark: herhangi bir kanalı >3 değişen piksel oranı >%0.05 ya da ortalama >0.5. Aynı makinede render birebir tekrarlanır (fark 0). Fark varsa gerçek görüntü + fark haritası `blender/build/tmp/visual/`'a, çıkış 1. Altını olmayan yeni asset'in görüntüsü yazılır ("YENİ"; commit'te gözden geçir). Bilinçli görsel değişiklikten sonra: `<GODOT_EXE> --path . res://shared/tests/visual_test.tscn -- --update-golden` (kullanıcı görüntüyü onayladıktan sonra). `build_all --visual` çalıştırır. Kalibrasyon: domates kırmızısı EE9585 → E8897A değişimi %0.29 ile yakalandı.
+
 - Gizli iç yüz temizliği yapılmadı: tek örnek sandığın iç içe kirişleri (toplam 204 üçgen), kazanç ölçülemeyecek kadar küçük; kaynak paylaşımlı köşeleri birleştirmek gölgelendirmeyi değiştirirdi.
 
 - **Alt süreç tuzağı:** `Popen(stdout=PIPE)` ile başlatılıp bitene kadar okunmayan süreç, boru dolunca kilitlenir (izleme modunda Godot import'u takıldı). Uzun süren alt süreçlerin çıktısını dosyaya yönlendir.
@@ -114,7 +119,9 @@ blender-test/
 ├─ blender/lib/buildkit.py       # derleme çekirdeği: girdi özeti, manifest, süreç içi çalıştırma, Godot
 ├─ blender/build/manifest.json   # derleme kaydı (izlenir); perf_baseline.json (izlenir); tmp/, perf_report.json git dışı
 ├─ experiments/exp03_gallery/perf/  # performans testi (pencereli)
-├─ blender/tools/paths.json      # Godot exe yolu
+├─ blender/tools/paths.json      # Godot exe yolu + sabitlenmiş Blender/Godot sürümleri
+├─ blender/build/golden/         # görsel regresyon altın görüntüleri (izlenir)
+├─ shared/tests/visual_test.tscn # görsel regresyon testi (pencereli)
 ├─ blender/specs/               # asset spec'leri (TOML); parts/ ortak parça verileri (saksılar)
 ├─ blender/styles/              # stil tokenları (pastel, ps1)
 ├─ blender/lib/assetkit.py      # spec → asset üretim akışı, Style, Ctx

@@ -1,3 +1,7 @@
 {
-  "godot": "C:/Users/pc/Desktop/Godot_v4.7.1-stable_win64.exe"
+  "godot": "C:/Users/pc/Desktop/Godot_v4.7.1-stable_win64.exe",
+  "versions": {
+    "blender": "5.2.2 LTS",
+    "godot": "4.7.1.stable"
+  }
 }

@@ -16,14 +16,14 @@
         }
       },
       "blender": "5.2.2 LTS",
-      "input": "e15ec59be87113950591dbee24acf9aa79a61c6d9fcdf66281532ef1b6482a78",
+      "input": "eab4793e621f71954a89ecc942f8e6633616e1ba16a3ffbe2880cdb6e717302f",
       "outputs": {
         "assets/models/bonsai_stage1.glb": "8385b5478a60a2c4ce5d3de7f7d1009d1fb469be708af293601add352e6d7386",
         "assets/models/bonsai_stage2.glb": "81e8ba60f7912b918de1198d126829ce7f55dc6fe6053b72ca5e08dc55598036",
         "assets/models/bonsai_stage3.glb": "1fdc9b15f98627b370a7b9aae6e00a91284763ca25e595aa3f7992cbf474f34a",
         "blender/props/bonsai.blend": "cd6629408d40fdadea1d32ccfd2d2609c55498008990dabdd64de4db8ad27703"
       },
-      "seconds": 0.7
+      "seconds": 0.75
     },
     "blender/specs/tomato.toml": {
       "assets": {
@@ -45,7 +45,7 @@
         }
       },
       "blender": "5.2.2 LTS",
-      "input": "27201023aeea391f0a6f23700b2ace56759cc056be97429104b68846ee837f2f",
+      "input": "f11270fc75e3c5c27728d6de9904b253fd47131f49c806e3813275807f37f32d",
       "outputs": {
         "assets/models/tomato_stage1.glb": "d0d9208dbc8b22f93113c57967c421c8a8b3492df6c8114269379575dd02b6ca",
         "assets/models/tomato_stage2.glb": "5b07a4cc56ea89f232f7d8f6ed811a465229d2263be93244f1376b5f3844d8be",
@@ -53,7 +53,7 @@
         "assets/models/tomato_stage4.glb": "e636703b9820d8a07f7f870afea0112742d335fcaa2a3941abaa805042962b3c",
         "blender/props/tomato.blend": "ab54a14ee2003008d8a4489050162803639365e377b8494f8cc358f58f0cdba6"
       },
-      "seconds": 1.05
+      "seconds": 1.53
     },
     "blender/specs/wooden_crate.toml": {
       "assets": {
@@ -63,12 +63,12 @@
         }
       },
       "blender": "5.2.2 LTS",
-      "input": "ff752c42b22a45120ca36ce05fb8b15f96c06af88de75e235085a41c5e29e2bb",
+      "input": "23324c7c126cfc096ad4a819dc9b9e485ead102192394c0c8c2823802fbb914b",
       "outputs": {
         "assets/models/wooden_crate.glb": "a79d1fbcd92350e0fcf70ea0d145a16637e037942a56cca492c995fdbed5545a",
         "blender/props/wooden_crate.blend": "f9a9b37ce4f662802d2a333b573fe9a68dc9178f2802d44a00483d246f328962"
       },
-      "seconds": 0.29
+      "seconds": 0.33
     }
   },
   "schema": 1
