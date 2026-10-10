@@ -1,0 +1,67 @@
+# Bulutta derleme: her push'ta tüm asset'ler sıfırdan üretilir ve repodakiyle bayt bayt
+# karşılaştırılır (tekrarlanabilirlik), ardından Godot import + galeri açılışı headless denenir.
+# GPU gerektiren testler (--visual, --perf) burada çalışmaz; yerelde build_all ile çalıştır.
+# Sürümler blender/tools/paths.json "versions" ile aynı olmalı (build_all --ci uyuşmazlığı hata sayar).
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  BLENDER_VERSION: "5.2.2"
+  BLENDER_SERIES: "5.2"
+  GODOT_VERSION: "4.7.1-stable"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Araç önbelleği
+        id: tools
+        uses: actions/cache@v4
+        with:
+          path: ~/tools
+          key: tools-blender-${{ env.BLENDER_VERSION }}-godot-${{ env.GODOT_VERSION }}
+
+      - name: Blender ve Godot indir
+        if: steps.tools.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/tools
+          cd ~/tools
+          curl -fsSL -o blender.tar.xz "https://download.blender.org/release/Blender${BLENDER_SERIES}/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          tar -xf blender.tar.xz && rm blender.tar.xz
+          mv "blender-${BLENDER_VERSION}-linux-x64" blender
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip && rm godot.zip
+          mv "Godot_v${GODOT_VERSION}_linux.x86_64" godot
+
+      - name: Sistem kütüphaneleri (Blender arka plan modu)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 \
+            libxkbcommon0 libsm6 libgl1 libegl1 > /dev/null
+
+      - name: Sıfırdan derle (--full)
+        run: >
+          ~/tools/blender/blender --background --factory-startup --python-exit-code 1
+          --python blender/tools/build_all.py -- --full --no-godot --ci
+
+      - name: Tekrarlanabilirlik (çıktılar repodakiyle aynı mı?)
+        run: |
+          git status --short
+          # manifestteki "seconds" süre ölçümüdür (iş bölüşümü), her derlemede değişir
+          if ! git diff --exit-code -I'"seconds"' -- assets/models blender/props blender/build/manifest.json; then
+            echo "::error::Sıfırdan derleme repodakinden farklı çıktı üretti (yukarıdaki dosyalar)."
+            exit 1
+          fi
+
+      - name: Godot import + galeri (headless)
+        run: |
+          export GODOT_EXE="$HOME/tools/godot"
+          ~/tools/blender/blender --background --factory-startup --python-exit-code 1 \
+            --python blender/tools/build_all.py -- --ci

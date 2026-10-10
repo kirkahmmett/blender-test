@@ -74,6 +74,7 @@ Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici s�
 - **Topoloji kontrolü (`propkit.check_topology`, `check_object` çağırır):** hata = ters yüz (komşu yüzler ortak kenarı aynı yönde dolaşıyor), kapalı parça içi dışına dönmüş (işaretli hacim < 0). uyarı = manifold olmayan kenar (>2 yüz), bozuk üçgen (alan < 1e-10). Açık kenarlar (yaprak, düzlem) normaldir, uyarı vermez. 8 asset için ≤60 ms.
 - **Sürüm sabitleme:** `blender/tools/paths.json` `versions` (`blender`: `bpy.app.version_string`, `godot`: `godot --version` çıktısının başı). Farklıysa `build_all` "SÜRÜM UYARISI" basar (durdurmaz). Bilinçli sürüm yükseltmesinde: değerleri güncelle → `build_all --full --visual --perf` → farklar onaylanırsa altın görüntü/taban çizgisini güncelle.
 - **Görsel regresyon testi:** `shared/tests/visual_test.tscn` (pencereli, GPU). Her glb oyundaki shader'larıyla (PropStyle) sabit ışık/kameradan 2 açıdan (`on`, `ust`) 384² render edilir, `blender/build/golden/<asset>_<açı>.png` (git'te) ile karşılaştırılır. Fark: herhangi bir kanalı >3 değişen piksel oranı >%0.05 ya da ortalama >0.5. Aynı makinede render birebir tekrarlanır (fark 0). Fark varsa gerçek görüntü + fark haritası `blender/build/tmp/visual/`'a, çıkış 1. Altını olmayan yeni asset'in görüntüsü yazılır ("YENİ"; commit'te gözden geçir). Bilinçli görsel değişiklikten sonra: `<GODOT_EXE> --path . res://shared/tests/visual_test.tscn -- --update-golden` (kullanıcı görüntüyü onayladıktan sonra). `build_all --visual` çalıştırır. Kalibrasyon: domates kırmızısı EE9585 → E8897A değişimi %0.29 ile yakalandı.
+- **CI (`.github/workflows/build.yml`, ubuntu-24.04):** her push'ta Blender + Godot indirilir (önbellekli; sürümler workflow `env`'inde, `paths.json` ile aynı tutulmalı) → `build_all --full --no-godot --ci` → `git diff` ile çıktılar (glb, .blend, manifest; `"seconds"` satırları hariç) repodakiyle aynı mı → `build_all --ci` ile Godot import + galeri headless. `--ci`: sürüm uyuşmazlığı hata, Godot kontrolü glb değişmese de çalışır (editör açık mı kontrolü yapılmaz; yerelde editör açıkken kullanma). GPU testleri (`--visual`, `--perf`) CI'da yok, yerelde çalıştır. Repoda `gh` yok; sonuç GitHub → Actions sekmesinde.
 
 - Gizli iç yüz temizliği yapılmadı: tek örnek sandığın iç içe kirişleri (toplam 204 üçgen), kazanç ölçülemeyecek kadar küçük; kaynak paylaşımlı köşeleri birleştirmek gölgelendirmeyi değiştirirdi.
 
@@ -122,6 +123,7 @@ blender-test/
 ├─ blender/tools/paths.json      # Godot exe yolu + sabitlenmiş Blender/Godot sürümleri
 ├─ blender/build/golden/         # görsel regresyon altın görüntüleri (izlenir)
 ├─ shared/tests/visual_test.tscn # görsel regresyon testi (pencereli)
+├─ .github/workflows/build.yml  # CI: sıfırdan derleme + tekrarlanabilirlik + Godot headless
 ├─ blender/specs/               # asset spec'leri (TOML); parts/ ortak parça verileri (saksılar)
 ├─ blender/styles/              # stil tokenları (pastel, ps1)
 ├─ blender/lib/assetkit.py      # spec → asset üretim akışı, Style, Ctx

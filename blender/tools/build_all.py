@@ -10,6 +10,7 @@ Seçenekler:
     --no-godot     Godot import ve galeri testini atla
     --perf         galeri performans testi (pencereli) + taban çizgisiyle karşılaştırma
     --visual       görsel regresyon testi (pencereli): her asset altın görüntüyle karşılaştırılır
+    --ci           sürekli entegrasyon: sürüm uyuşmazlığı hata sayılır, Godot kontrolü her zaman çalışır
 
 Akış (bkz. blender/lib/buildkit.py):
   1. Artımlı: girdisi ve çıktıları değişmeyen üreticiler atlanır (blender/build/manifest.json).
@@ -44,6 +45,7 @@ def main():
     ap.add_argument("--no-godot", action="store_true")
     ap.add_argument("--perf", action="store_true", help="galeri performans testi + taban çizgisi karşılaştırması")
     ap.add_argument("--visual", action="store_true", help="görsel regresyon testi (altın görüntüler)")
+    ap.add_argument("--ci", action="store_true", help="sürüm uyuşmazlığı hata; Godot kontrolü her zaman")
     args = ap.parse_args(argv)
 
     t_start = time.perf_counter()
@@ -58,8 +60,9 @@ def main():
             print(f"[build_all] manifestten çıkarıldı (birim artık yok): {stale}")
             del manifest["generators"][stale]
 
-    for warning in buildkit.check_versions(version, need_godot=not args.no_godot or args.perf):
-        print(f"[build_all] SÜRÜM UYARISI: {warning}")
+    version_warnings = buildkit.check_versions(version, need_godot=not args.no_godot or args.perf or args.visual)
+    for warning in version_warnings:
+        print(f"[build_all] SÜRÜM {'HATASI' if args.ci else 'UYARISI'}: {warning}")
 
     dirty = {}
     for g in gens:
@@ -98,7 +101,7 @@ def main():
         shutil.rmtree(tmp, ignore_errors=True)
     t_build = time.perf_counter() - t_start
 
-    failed = False
+    failed = args.ci and bool(version_warnings)
     changed_glbs = []
     for r in results:
         if r["status"] == "üretildi":
@@ -139,9 +142,9 @@ def main():
     t_godot = 0.0
     if args.no_godot:
         print("\n== Godot == atlandı (--no-godot)")
-    elif not changed_glbs:
+    elif not changed_glbs and not args.ci:
         print("\n== Godot == değişen model yok, import gerekmiyor")
-    elif buildkit.godot_editor_open():
+    elif not args.ci and buildkit.godot_editor_open():
         print(f"\n== Godot == {len(changed_glbs)} model değişti; proje editörde açık, komut satırından "
               "import yapılmadı. Editör pencereye geçince yeniden import eder, galeri kendini yeniler.")
     else:
