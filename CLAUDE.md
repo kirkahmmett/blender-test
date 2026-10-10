@@ -16,6 +16,7 @@ Kullanıcı Türkçe konuşur; yanıtları Türkçe ver.
 - `BLENDER_EXE = "C:\Program Files (x86)\Steam\steamapps\common\Blender\blender.exe"` (5.2.2 LTS, Steam kurulumu).
 - exp01: `wooden_crate` (204 üçgen, 64 px tahta dokusu + vertex color tonu) üretildi, Godot'ta doğrulandı.
 - exp02: **bonsai, 3 aşama** (`blender/props/make_bonsai.py`). **Stil istisnası**: PS1 kuralları dışında; med poly, smooth, pastel vertex color, `pastel_spatial.gdshader`. Han-kengai (yarı şelale), ardıç bulutları, seladon oval porselen saksı. Aşamalar aynı yolun (TRUNK_PATH) başını kullanır, yani aynı ağacın büyümesi. Üçgen: 2110 / 3640 / 5838 (kullanıcı 5.8k'yı onayladı). `--part pot|stage1|stage2|stage3|all [--export] [--preview p.png] [--front]`.
+- **Domates fidanı, 4 aşama** (`blender/props/make_tomato.py`, 10 Ekim 2026): pastel, med-high poly; fide → genç (bambu çubuk + ip) → çiçekli (sarı çiçek salkımları, tomurcuk, minik yeşil meyve) → olgun (alt salkım pastel kırmızı, orta turuncu-yeşil, üst çiçek). Terakota saksı. Aynı bitkinin büyümesi: düğüm azimutları (137.5°), gövde kıvrımı, salkım düğümleri (6, 8, 11) sabit; boy, yaprak sayı/boyu, olgunluk değişir. Kullanıcı onaylı bütçe `prop_budget`: 2200 / 5500 / 10000 / 13200; şu an 1602 / 3971 / 7370 / 11912. Bileşik yaprak: sap + 1–3 yaprakçık çifti + ara minik yaprakçıklar + uç yaprakçık (tırtıklı, hafif çanak). Malzemeler: tomato_terracotta/soil/stem/leaf/fruit/petal/stake.
 - Önizlemeler `blender/props/previews/` altında.
 - `blender/.gdignore` var: Godot `.blend` kaynaklarını kendisi import etmeye çalışmasın.
 
@@ -63,6 +64,9 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 - Test: geçici bir sahneden `Input.action_press` ve `InputEventMouseMotion` ile karakteri sür, `--write-movie` ile kaydet; geçici klasörü sonra sil.
 - **Fare bakışı tuzakları (9 Ekim 2026'da düzeltildi):** (1) Kilitli imleç ekran ortasındadır; oradaki bir Control (varsayılan `MOUSE_FILTER_STOP` olan ColorRect nişangâh) fare hareketini yutar ve `_unhandled_input`'a hiç ulaşmaz. Bakış/yörünge `_input`'ta, HUD öğeleri `MOUSE_FILTER_IGNORE`. (2) `canvas_items` ölçeklemesinde `relative` pencere boyutuyla ölçeklenir; bakış için `screen_relative` kullan. Testte sentetik fare olayının `position`'ını ekran ortasına ver, yoksa (1) gizlenir.
 - **Galeri @tool:** `gallery.gd` editörde de stüdyo + sergileri kurar (sahipsiz "Generated" düğümü, sahneye kaydedilmez); karakter/HUD/inceleme yalnızca oyunda. Inspector'da "Galeriyi yenile" düğmesi (`@export_tool_button`). `PropStyle` da `@tool`. Editörde çalışan koda `Engine.is_editor_hint()` koruması koy; editör açıkken ikinci bir editör örneği açma.
+- **Pastel malzeme eşlemesi (`PropStyle.PASTEL_PRESETS`):** Blender malzeme adı sonekine göre (porcelain, terracotta, soil, bark, stem, stake, foliage, leaf, petal, fruit). `"double_sided": true` → `pastel_leaf` shader; yeni ince yüzey malzemesi eklerken bunu unutma. Açık pastel yeşiller galeri ışığında beyaza taşar: foliage/leaf için specular/rim düşük, `albedo_tint` ~0.86–0.9. Blender tarafında ince yüzey malzemelerinde `use_backface_culling = False`, kapalı gövdelerde True (glTF doubleSided buna göre).
+- İnceleme sırasında sergi kaidesi gizlenir (alttan 360° bakış için), çıkışta geri gelir.
+- Testte pencereli kayıt gerçek fareyi kilitleyebilir: test sahnesinde `player.controls_enabled = false` ve `inspector.mouse_sensitivity = 0` yap, yönü elle ver.
 - Pencereli testler gerçek fareyi kısa süre kilitler ve kullanıcının fare hareketi değerleri bozar; kesin değer gerekiyorsa headless çalıştır (headless'ta fare kilitlenmez, FpsPlayer bakışı test edilemez).
 - Test tuzakları: sentetik `InputEventKey`'de hem `keycode` hem `physical_keycode` doldur (`ui_cancel` keycode ile eşleşir, bizim eylemler fiziksel). Kayıt modunda sentetik fare hareketi FpsPlayer'a her zaman ulaşmayabilir; bakış açısını testte doğrudan `camera.rotation.x` ile ver.
 
@@ -72,14 +76,17 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 blender-test/
 ├─ project.godot
 ├─ blender/export_glb.py        # Blender -> .glb export yardımcısı
-├─ blender/lib/propkit.py       # ortak prop kiti: parmak izi koruması, export
+├─ blender/lib/propkit.py       # ortak prop kiti: parmak izi koruması, kalite kontrolü, export
+├─ blender/lib/meshkit.py       # ortak geometri: srgb, MeshBuilder, tube, catmull_rom, render_preview
 ├─ blender/tools/export_props.py # elle düzenlenmiş .blend için yalnızca export
 ├─ blender/tools/build_all.py    # tek komut: üret + kalite kontrolü + Godot testi
 ├─ blender/tools/paths.json      # Godot exe yolu
 ├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/, _backup/ (git dışı)
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)
 ├─ shared/shaders/ps1_spatial.gdshader
-├─ shared/shaders/pastel_spatial.gdshader   # PS1 dışı yumuşak/pastel stil
+├─ shared/shaders/pastel_common.gdshaderinc # pastel gövdesi (iki shader include eder)
+├─ shared/shaders/pastel_spatial.gdshader   # pastel, cull_back (kapalı gövdeler)
+├─ shared/shaders/pastel_leaf.gdshader      # pastel, çift taraflı (yaprak, taç yaprak)
 ├─ shared/shaders/grid_floor.gdshader   # 1 m / 5 m ızgaralı zemin
 ├─ shared/scripts/model_spinner.gd   # model önizleme sahnesi (model_paths, style)
 ├─ shared/scripts/fps_player.gd      # FpsPlayer

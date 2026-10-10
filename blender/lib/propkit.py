@@ -154,7 +154,8 @@ def save_generated(blend_path):
 
 STYLES = ("ps1", "pastel")
 PLACEMENTS = ("floor", "pedestal")
-## Stil başına üçgen bütçesi. pastel: bonsai için kullanıcı ~5.8k'yı onayladı.
+## Stil başına varsayılan üçgen bütçesi (pastel: bonsai ~5.8k onaylı). Bir prop kendi onaylı
+## bütçesini obj["prop_budget"] ile taşıyabilir (ör. domates aşamaları).
 BUDGETS = {"ps1": 500, "pastel": 6000}
 SIZE_MIN = 0.02   # m
 SIZE_MAX = 10.0   # m
@@ -209,9 +210,13 @@ def check_object(obj):
         warn(f"ad snake_case değil: {obj.name}")
 
     tris = _tri_count(obj)
-    budget = BUDGETS.get(style)
-    if budget and tris > budget:
-        err(f"üçgen bütçesi aşıldı: {tris} / {budget} ({style})")
+    # prop_budget: kullanıcının bu prop için onayladığı bütçe; yoksa stilin varsayılanı
+    budget = obj.get("prop_budget", BUDGETS.get(style))
+    source = "prop_budget" if "prop_budget" in obj.keys() else style
+    if budget is not None and (not isinstance(budget, int) or budget <= 0):
+        err(f"prop_budget geçersiz: {budget!r} (pozitif tam sayı olmalı)")
+    elif budget and tris > budget:
+        err(f"üçgen bütçesi aşıldı: {tris} / {budget} ({source})")
 
     if any(abs(s - 1.0) > 1e-4 for s in obj.scale) or any(abs(r) > 1e-4 for r in obj.rotation_euler):
         warn("ölçek/dönüş uygulanmamış (Ctrl+A); Godot'ta telafi gerekmesin")

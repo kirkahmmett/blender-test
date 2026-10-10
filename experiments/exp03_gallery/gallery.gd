@@ -40,6 +40,7 @@ var exhibits: Array[Node3D] = []
 var _generated: Node3D  # stüdyo + sergiler; kaydedilmez
 
 var _aimed: Node3D  # nişangâhın üstünde olduğu sergi
+var _hidden_pedestal: Node3D  # inceleme sırasında gizlenen kaide
 var _labels: Array[Label3D] = []
 var _labels_on := true
 var _aim_label: Label
@@ -97,6 +98,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("inspect") and _aimed and not inspector.active:
 		var info: Dictionary = _aimed.get_meta("prop_info")
 		player.controls_enabled = false
+		# kaide alttan bakışı kapatmasın: inceleme boyunca gizle (prop havada kalır)
+		_hidden_pedestal = _aimed.get_node_or_null("Pedestal")
+		if _hidden_pedestal:
+			_hidden_pedestal.visible = false
 		inspector.open(info.model, info, player.camera)
 		_set_aim(null)
 		_refresh_overlay()
@@ -136,6 +141,9 @@ func _set_aim(exhibit: Node3D) -> void:
 
 func _on_inspector_closed() -> void:
 	player.controls_enabled = true
+	if _hidden_pedestal:
+		_hidden_pedestal.visible = true
+		_hidden_pedestal = null
 	_refresh_overlay()
 
 

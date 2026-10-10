@@ -188,14 +188,23 @@ def render_preview(path, objs, front=False, tag="meshkit"):
     lo = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
     hi = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
     cx = (lo.x + hi.x) / 2
-    span = max(hi.x - lo.x, (hi.z - lo.z) * 1.6) + 0.2
+    width, height = hi.x - lo.x, hi.z - lo.z
+    # uzun objelerde dikey kadraj; objeyi kadraja oturt (lens 50 mm, sensör 36 mm)
+    portrait = len(objs) == 1 and height > width * 1.3
+    res_x, res_y = (640, 900) if portrait else ((900 if len(objs) > 1 else 560), 560)
     cam_data = bpy.data.cameras.new("preview_cam")
     cam_data.lens = 50
+    cam_data.sensor_fit = "AUTO"
+    half = 18.0 / 50.0                       # uzun kenarın yarım açı tanjantı
+    half_x = half if res_x >= res_y else half * res_x / res_y
+    half_y = half if res_y > res_x else half * res_y / res_x
+    depth = hi.y - lo.y
+    dist = max(width / 2 / half_x, height / 2 / half_y) * 1.18 + depth * 0.5
     cam = bpy.data.objects.new("preview_cam", cam_data)
     scene.collection.objects.link(cam)
     target = Vector((cx, 0, (lo.z + hi.z) / 2))
     view = Vector((0.0, -1.0, 0.08)) if front else Vector((0.25, -1.0, 0.35))
-    cam.location = target + view.normalized() * span * 1.35
+    cam.location = target + view.normalized() * dist
     cam.rotation_euler = (target - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam
     scene.render.engine = "BLENDER_EEVEE"
@@ -216,8 +225,8 @@ def render_preview(path, objs, front=False, tag="meshkit"):
     sun.rotation_euler = (math.radians(50), math.radians(10), math.radians(30))
     scene.collection.objects.link(sun)
 
-    scene.render.resolution_x = 900 if len(objs) > 1 else 560
-    scene.render.resolution_y = 560
+    scene.render.resolution_x = res_x
+    scene.render.resolution_y = res_y
     scene.render.filepath = path
     bpy.ops.render.render(write_still=True)
     for o in (cam, sun):

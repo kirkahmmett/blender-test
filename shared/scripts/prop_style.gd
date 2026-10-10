@@ -8,13 +8,24 @@ class_name PropStyle
 
 const PS1_SHADER := preload("res://shared/shaders/ps1_spatial.gdshader")
 const PASTEL_SHADER := preload("res://shared/shaders/pastel_spatial.gdshader")
+## Çift taraflı pastel: yaprak/taç yaprağı gibi ince yüzeyler (preset'te "double_sided").
+const PASTEL_LEAF_SHADER := preload("res://shared/shaders/pastel_leaf.gdshader")
 
 ## Malzeme adı soneki -> pastel shader parametreleri (Blender'daki malzeme adlarıyla eşleşir).
+## "double_sided": true olanlar PASTEL_LEAF_SHADER kullanır; parametre değildir.
 const PASTEL_PRESETS := {
 	"porcelain": {"roughness": 0.22, "specular": 0.6, "rim": 0.0},
+	"terracotta": {"roughness": 0.75, "specular": 0.2, "rim": 0.0},
 	"soil": {"roughness": 1.0, "specular": 0.1, "rim": 0.0},
 	"bark": {"roughness": 0.9, "specular": 0.15, "rim": 0.0},
-	"foliage": {"roughness": 0.85, "specular": 0.2, "rim": 0.35},
+	"stem": {"roughness": 0.8, "specular": 0.2, "rim": 0.15},
+	"stake": {"roughness": 0.7, "specular": 0.25, "rim": 0.0},
+	# açık pastel yeşiller güneş + parlama + rim toplamında beyaza taşar: hepsi kısık
+	"foliage": {"roughness": 0.9, "specular": 0.1, "rim": 0.15, "albedo_tint": Color(0.9, 0.9, 0.9)},
+	"leaf": {"roughness": 0.9, "specular": 0.08, "rim": 0.1, "albedo_tint": Color(0.86, 0.86, 0.86),
+			"double_sided": true},
+	"petal": {"roughness": 0.7, "specular": 0.2, "rim": 0.25, "double_sided": true},
+	"fruit": {"roughness": 0.3, "specular": 0.55, "rim": 0.2},
 }
 
 
@@ -28,10 +39,11 @@ static func apply(root: Node, style: String) -> void:
 			var src := mi.mesh.surface_get_material(i) as BaseMaterial3D
 			var mat := ShaderMaterial.new()
 			if style == "pastel":
-				mat.shader = PASTEL_SHADER
 				var preset: Dictionary = _pastel_preset(src.resource_name if src else "")
+				mat.shader = PASTEL_LEAF_SHADER if preset.get("double_sided", false) else PASTEL_SHADER
 				for key: String in preset:
-					mat.set_shader_parameter(key, preset[key])
+					if key != "double_sided":
+						mat.set_shader_parameter(key, preset[key])
 			else:
 				mat.shader = PS1_SHADER
 				if src:
