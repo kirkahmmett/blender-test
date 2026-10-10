@@ -52,6 +52,7 @@ func _ready() -> void:
 	if Engine.is_editor_hint():
 		_rebuild()
 		set_physics_process(false)
+		_watch_editor_imports()
 		return
 
 	# wireframe görünümü, mesh'ler yüklenmeden önce açılmalı
@@ -68,6 +69,44 @@ func _ready() -> void:
 	inspector = PropInspector.new()
 	add_child(inspector)
 	inspector.closed.connect(_on_inspector_closed)
+
+
+## Editörde: model klasörüne yeni ya da yeniden import edilmiş glb gelince galeriyi yenile
+## (blender/tools/watch.py ile birlikte: kaydet → üret → editör import eder → galeri güncellenir).
+## EditorInterface'e adla erişilir: doğrudan yazılsa dışa aktarılmış oyunda derlenmez.
+func _watch_editor_imports() -> void:
+	var editor: Object = Engine.get_singleton("EditorInterface")
+	if editor == null:
+		return
+	var fs: Object = editor.get_resource_filesystem()
+	if not fs.resources_reimported.is_connected(_on_resources_reimported):
+		fs.resources_reimported.connect(_on_resources_reimported)
+		fs.filesystem_changed.connect(_on_filesystem_changed)
+
+
+func _exit_tree() -> void:
+	var editor: Object = Engine.get_singleton("EditorInterface") if Engine.is_editor_hint() else null
+	if editor:
+		var fs: Object = editor.get_resource_filesystem()
+		if fs.resources_reimported.is_connected(_on_resources_reimported):
+			fs.resources_reimported.disconnect(_on_resources_reimported)
+			fs.filesystem_changed.disconnect(_on_filesystem_changed)
+
+
+func _on_resources_reimported(paths: PackedStringArray) -> void:
+	for p in paths:
+		if p.begins_with(MODELS_DIR) and p.get_extension() == "glb":
+			_rebuild.call_deferred()
+			return
+
+
+## Yeni eklenen ya da silinen model (yeniden import olmadan da galeri değişmeli).
+func _on_filesystem_changed() -> void:
+	var shown := PackedStringArray()
+	for e in exhibits:
+		shown.append(e.get_meta("prop_info").path)
+	if shown != _model_paths():
+		_rebuild.call_deferred()
 
 
 ## Stüdyoyu ve sergileri (yeniden) kur.

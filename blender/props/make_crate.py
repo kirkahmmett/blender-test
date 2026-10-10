@@ -83,7 +83,8 @@ def make_wood_texture():
 
 def make_material(img):
     mat = bpy.data.materials.new(NAME)
-    mat.use_nodes = True
+    if mat.node_tree is None:   # Blender 5.x: yeni malzemede düğüm ağacı zaten var
+        mat.use_nodes = True
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
     bsdf.inputs["Roughness"].default_value = 1.0

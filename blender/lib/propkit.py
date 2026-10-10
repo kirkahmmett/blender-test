@@ -34,6 +34,22 @@ class OverwriteRefused(Exception):
 # guard_overwrite'ın "üretimden beri değişmemiş" bulduğu dosyalar: yol -> parmak izi
 _unchanged_on_disk = {}
 
+## Bu süreçte olanların yapılandırılmış kaydı (derleme hattı metin ayrıştırmak yerine bunu okur):
+##   {"type": "refused", "blend", "reason"}    elle düzenlenmiş .blend korundu
+##   {"type": "forced",  "blend", "backup"}    --force ile yedeklenip üstüne yazıldı
+##   {"type": "blend",   "path", "saved"}      .blend kaydı (saved=False: içerik aynıydı)
+##   {"type": "glb",     "name", "path", "sha256", "changed", "triangles", "issues"}
+EVENTS = []
+BUILD_TMP = os.path.join(BLENDER_DIR, "build", "tmp")
+
+
+def _sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
 
 # ---------------------------------------------------------------- parmak izi
 
@@ -124,6 +140,7 @@ def guard_overwrite(blend_path, force=False):
     reason = ("parmak izi yok (propkit öncesi ya da elle oluşturulmuş)" if stored is None
               else "içerik son üretimden sonra değişmiş (elle düzenlenmiş)")
     if not force:
+        EVENTS.append({"type": "refused", "blend": blend_path, "reason": reason})
         raise OverwriteRefused(
             f"{os.path.basename(blend_path)}: {reason}. Üstüne yazılmadı.\n"
             f"  - Düzenlemeyi Godot'a almak için: blender --background {blend_path} "
@@ -134,6 +151,7 @@ def guard_overwrite(blend_path, force=False):
     base = os.path.splitext(os.path.basename(blend_path))[0]
     backup = os.path.join(BACKUP_DIR, f"{base}-{stamp}.blend")
     shutil.copy2(blend_path, backup)
+    EVENTS.append({"type": "forced", "blend": blend_path, "backup": backup})
     print(f"[propkit] --force: {reason}; yedek: {backup}")
 
 
@@ -142,11 +160,13 @@ def save_generated(blend_path):
     .blend her kayıtta bayt düzeyinde değişir, git'te gereksiz ikili fark oluşmasın."""
     fp = fingerprint()
     if _unchanged_on_disk.get(os.path.abspath(blend_path)) == fp:
+        EVENTS.append({"type": "blend", "path": blend_path, "saved": False})
         print("[propkit] blend değişmedi, kaydedilmedi:", blend_path)
         return
     text = bpy.data.texts.get(FINGERPRINT_KEY) or bpy.data.texts.new(FINGERPRINT_KEY)
     text.from_string(fp)
     bpy.ops.wm.save_as_mainfile(filepath=blend_path, relative_remap=True)
+    EVENTS.append({"type": "blend", "path": blend_path, "saved": True})
     print("[propkit] blend:", blend_path)
 
 
@@ -252,12 +272,16 @@ def prop_objects():
 
 def export_props(objs=None, project_dir=PROJECT_DIR):
     """Her prop objesini kontrol edip kendi adıyla assets/models/<ad>.glb olarak, orijinde
-    export et. Kontrol sonucu glb'ye "qa" extras'ı olarak gömülür (.blend'e kaydedilmez)."""
+    export et. Kontrol sonucu glb'ye "qa" extras'ı olarak gömülür (.blend'e kaydedilmez).
+
+    Önce geçici klasöre yazılır; hedefteki dosya bayt düzeyinde aynıysa dokunulmaz
+    (değişmeyen dosyanın tarihi değişirse Godot onu boşuna yeniden import eder)."""
     import sys
     if BLENDER_DIR not in sys.path:
         sys.path.insert(0, BLENDER_DIR)
     import export_glb
     export_glb.TRI_BUDGET = max(BUDGETS.values())  # asıl bütçe kontrolü check_object'te
+    tmp_dir = os.path.join(BUILD_TMP, str(os.getpid()))
 
     view_layer = bpy.context.view_layer
     results = []
@@ -274,14 +298,27 @@ def export_props(objs=None, project_dir=PROJECT_DIR):
         obj.select_set(True)
         view_layer.objects.active = obj
         try:
-            res = export_glb.export_glb(obj.name, source="selection", project_dir=project_dir)
+            res = export_glb.export_glb(obj.name, source="selection", project_dir=tmp_dir)
         finally:
             obj.location = saved
             del obj[QA_KEY]
             view_layer.update()
-        res["issues"] = issues
-        print(f"[propkit] glb: {res['path']} {tris} üçgen, "
+
+        dest = os.path.join(project_dir, "assets", "models", obj.name + ".glb")
+        digest = _sha256(res["path"])
+        changed = not (os.path.isfile(dest) and _sha256(dest) == digest)
+        if changed:
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.move(res["path"], dest)
+        else:
+            os.remove(res["path"])
+        res.update(path=dest, issues=issues, sha256=digest, changed=changed)
+        EVENTS.append({"type": "glb", "name": obj.name, "path": dest, "sha256": digest,
+                       "changed": changed, "triangles": tris,
+                       "issues": [f"{level}: {msg}" for level, msg in issues]})
+        print(f"[propkit] glb: {dest} {tris} üçgen, "
               f"{sum(1 for i in issues if i[0] == 'hata')} hata, "
-              f"{sum(1 for i in issues if i[0] == 'uyarı')} uyarı")
+              f"{sum(1 for i in issues if i[0] == 'uyarı')} uyarı"
+              f"{'' if changed else ' (değişmedi)'}")
         results.append(res)
     return results

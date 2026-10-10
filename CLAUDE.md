@@ -38,10 +38,20 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 **Tek komut (her değişiklikten sonra çalıştır):**
 
 ```
-"<BLENDER_EXE>" --background --factory-startup --python blender/tools/build_all.py -- [--only <ad>] [--no-godot]
+"<BLENDER_EXE>" --background --factory-startup --python blender/tools/build_all.py -- [--only <ad>] [--full] [--jobs N] [--no-godot]
 ```
 
-`blender/props/make_*.py`'leri kendisi bulur, her birini `--build` ile çalıştırır, kalite kontrolü tablosunu basar, Godot `--import` ve galeri açılış testini yapar. Sorun varsa çıkış kodu 1 ve "SONUÇ: SORUN VAR". Elle düzenlenmiş dosyalar "atlandı" olur (koruma). Godot yolu `blender/tools/paths.json` (ya da `GODOT_EXE`).
+`blender/props/make_*.py`'leri kendisi bulur. **Artımlı** (Sprint 1, 10 Ekim 2026): `blender/build/manifest.json` (git'te izlenir) her üretici için girdi özetini (şema + Blender sürümü + script + `blender/lib/*.py` hariç buildkit + `export_glb.py`) ve çıktı sha256'larını tutar; girdi ve çıktılar aynıysa atlanır, çıktı silinmiş/dışarıdan değişmişse yeniden derler. Kirli üreticiler **paralel** işçilere bölünür (`blender/tools/worker.py`; ana süreç de işçi; önceki sürelere göre dağıtım); üreticiler süreç içinde `runpy` ile çalışır (`buildkit.run_generator`), sonuçlar `propkit.EVENTS`'ten okunur. Değişmeyen glb'ye dokunulmaz (geçici klasöre export + bayt karşılaştırma) → Godot boşuna import etmez; hiçbir glb değişmediyse Godot adımı atlanır; proje editörde açıksa CLI import yapılmaz. Kalite tablosu manifestteki tüm asset'leri gösterir. Sorun varsa çıkış kodu 1. Ölçümler: değişiklik yok 1.7 s (yalnızca Blender açılışı), tam paralel derleme 3.6 s, tek üretici + Godot ~11 s (Godot import ~5–6 s sabit). Godot yolu `blender/tools/paths.json` (ya da `GODOT_EXE`).
+
+**İzleme modu (günlük çalışma için):**
+
+```
+"<BLENDER_EXE>" --background --factory-startup --python blender/tools/watch.py -- [--no-godot]
+```
+
+Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici süreç içinde yeniden üretilir (kaydet → yeni glb ~1 s). Editör açıksa editör kendisi import eder ve galeri (`gallery.gd`, `resources_reimported` / `filesystem_changed`) kendini yeniler; editör kapalıysa `godot --import` arka planda çalışır, izleyici beklemez. Manifesti build_all ile aynı anda iki süreç yazmasın: izleme açıkken build_all çalıştırma.
+
+- **Alt süreç tuzağı:** `Popen(stdout=PIPE)` ile başlatılıp bitene kadar okunmayan süreç, boru dolunca kilitlenir (izleme modunda Godot import'u takıldı). Uzun süren alt süreçlerin çıktısını dosyaya yönlendir.
 
 - **Yeni üretici sözleşmesi:** `make_<ad>.py` `--build` (her şeyi üret + export) ve `--force` kabul etmeli; `propkit.guard_overwrite` → üret → `propkit.save_generated` → `propkit.export_props` sırasını izlemeli. Örnek: `make_crate.py`.
 - **Kalite kontrolü (`propkit.check_object`):** hata = prop_name/style/placement eksik ya da geçersiz, üçgen bütçesi aşımı (`BUDGETS`: ps1 500, pastel 6000), merkez noktası tabanda değil (±1 cm). uyarı = isim snake_case değil, ölçek/dönüş uygulanmamış, merkez izdüşüm dışında, ölçü 2 cm–10 m dışında, doku kare/2'nin kuvveti değil, PS1 dokuda >256 px ya da nearest değil. Sonuç glb'ye `qa` extras'ı olarak gömülür; galeride hata kırmızı, uyarı turuncu etiket; inceleme paneli listeler. `qa` anahtarı hiç yoksa "kontrolden geçmemiş" uyarısı.
@@ -79,7 +89,11 @@ blender-test/
 ├─ blender/lib/propkit.py       # ortak prop kiti: parmak izi koruması, kalite kontrolü, export
 ├─ blender/lib/meshkit.py       # ortak geometri: srgb, MeshBuilder, tube, catmull_rom, render_preview
 ├─ blender/tools/export_props.py # elle düzenlenmiş .blend için yalnızca export
-├─ blender/tools/build_all.py    # tek komut: üret + kalite kontrolü + Godot testi
+├─ blender/tools/build_all.py    # tek komut: artımlı + paralel üretim, kalite kontrolü, Godot testi
+├─ blender/tools/watch.py        # izleme modu: kaydet → yeniden üret (~1 s)
+├─ blender/tools/worker.py       # paralel derleme işçisi (build_all başlatır)
+├─ blender/lib/buildkit.py       # derleme çekirdeği: girdi özeti, manifest, süreç içi çalıştırma, Godot
+├─ blender/build/manifest.json   # derleme kaydı (izlenir); tmp/ git dışı
 ├─ blender/tools/paths.json      # Godot exe yolu
 ├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/, _backup/ (git dışı)
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)

@@ -8,3 +8,6 @@ __pycache__/
 
 # propkit --force yedekleri
 blender/props/_backup/
+
+# derleme hattının geçici dosyaları (manifest.json izlenir)
+blender/build/tmp/
