@@ -1,0 +1,116 @@
+# Domates fidanı — 4 aşama: fide → genç → çiçekli → olgun meyveli. Terakota saksı;
+# 2. aşamadan itibaren bambu çubuk ve ip bağları. Aynı bitkinin büyümesi.
+pot = "@parts/pot_terracotta"         # kök anahtar: ilk [tablo] başlığından önce olmalı
+
+[asset]
+family = "tomato"
+blend = "tomato"
+style = "pastel"
+placement = "pedestal"
+material_prefix = "tomato"
+spacing = 0.5
+
+[palette]
+stem_dark = "7FA77B"
+stem = "97BD8E"
+stem_light = "B3D3A6"
+leaf_dark = "7EAD82"
+leaf = "9FCB92"
+leaf_light = "C3E2AF"
+leaf_vein = "CDE8BC"
+leaf_old = "D6D69C"          # alt yaşlı yapraklarda solgunluk
+sepal = "8DB97F"
+fruit_green = "BBDA9C"
+fruit_orange = "F4C38D"
+fruit_red = "EE9585"
+fruit_red_deep = "E3837A"
+fruit_highlight = "FFF1E6"
+petal = "F7E59C"
+petal_base = "EDCF73"
+petal_tip = "FFF6D6"
+anther = "E7BF5C"
+bamboo = "DCCDA2"
+bamboo_node = "BFAE7F"
+bamboo_highlight = "F1E7C7"
+twine = "EDE2C8"
+
+[plant]
+seed = 21
+soil_z = 0.164                 # saksının toprak seviyesiyle aynı
+# düğümler arası mesafe (tam boy bitkide, m); aşamalar "scale" ile ölçekler
+internodes = [0.030, 0.035, 0.045, 0.050, 0.055, 0.055, 0.055, 0.055, 0.055, 0.050, 0.050, 0.045]
+phyllotaxis_deg = 137.5        # ardışık yaprakların arasındaki açı
+stake_pos = [0.0, 0.045, 0.0]
+stake_r = 0.0042
+
+# Salkım öğeleri: ["fruit", yarıçap, olgunluk 0..1] | ["flower", boy] | ["bud", boy]
+[[variant]]
+id = "stage1"
+object = "tomato_stage1"
+name = "Domates — 1. aşama (fide)"
+budget = 2200
+stage = 1
+nodes = 1
+scale = 0.55
+hypo = 0.048
+r_base = 0.0021
+sides = 6
+lmax = 0.055
+stake = 0.0
+cotyledon = 1.35
+cotyledon_age = 0.0
+
+[[variant]]
+id = "stage2"
+object = "tomato_stage2"
+name = "Domates — 2. aşama (genç)"
+budget = 5500
+stage = 2
+nodes = 5
+scale = 0.75
+hypo = 0.040
+r_base = 0.0042
+sides = 7
+lmax = 0.130
+stake = 0.32
+cotyledon = 0.95
+cotyledon_age = 0.3
+
+[[variant]]
+id = "stage3"
+object = "tomato_stage3"
+name = "Domates — 3. aşama (çiçekli)"
+budget = 10000
+stage = 3
+nodes = 9
+scale = 0.92
+hypo = 0.045
+r_base = 0.0060
+sides = 8
+lmax = 0.190
+stake = 0.52
+cotyledon = 0.9
+cotyledon_age = 0.8
+[variant.trusses]
+6 = [["fruit", 0.009, 0.0], ["fruit", 0.007, 0.0], ["flower", 0.014], ["flower", 0.014], ["bud", 0.006]]
+8 = [["flower", 0.014], ["flower", 0.013], ["bud", 0.006], ["bud", 0.005]]
+
+[[variant]]
+id = "stage4"
+object = "tomato_stage4"
+name = "Domates — 4. aşama (olgun)"
+budget = 13200
+stage = 4
+nodes = 12
+scale = 1.0
+hypo = 0.045
+r_base = 0.0072
+sides = 8
+lmax = 0.220
+stake = 0.62
+cotyledon = 0.0              # olgun bitkide çenek yaprakları dökülmüş
+cotyledon_age = 1.0
+[variant.trusses]
+6 = [["fruit", 0.027, 1.0], ["fruit", 0.026, 1.0], ["fruit", 0.024, 0.95], ["fruit", 0.022, 0.9]]
+8 = [["fruit", 0.024, 0.55], ["fruit", 0.023, 0.4], ["fruit", 0.020, 0.15], ["fruit", 0.018, 0.05]]
+11 = [["flower", 0.015], ["flower", 0.014], ["fruit", 0.007, 0.0], ["bud", 0.006]]

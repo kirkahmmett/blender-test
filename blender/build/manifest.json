@@ -1,6 +1,6 @@
 {
   "generators": {
-    "blender/props/make_bonsai.py": {
+    "blender/specs/bonsai.toml": {
       "assets": {
         "bonsai_stage1": {
           "issues": [],
@@ -16,31 +16,16 @@
         }
       },
       "blender": "5.2.2 LTS",
-      "input": "d6f23663f761b89d63b2914dc5f66dfa617f89ff82bb765e64027e5cf89dd036",
+      "input": "759c2d8f43615956e53c471e6d5385d523aab36d6de1291c23960e3e9dfae558",
       "outputs": {
         "assets/models/bonsai_stage1.glb": "7e211803ebf8c14b117eca99cfc6e646fd007fb6418f9672a8f2f8899b550733",
         "assets/models/bonsai_stage2.glb": "2069f9a6bf71fc58276595d7b1f3e6f70541fd5e6a683de2b84ffe667b355488",
         "assets/models/bonsai_stage3.glb": "a852e5176aa21e28884ccd8d6a5772299205b186e17ff4620b850a9936e7a4ff",
         "blender/props/bonsai.blend": "536578004eb3f8290f1343aafd3dbfb8cb1960da5ab349ca0f8f5a9d1b908193"
       },
-      "seconds": 0.86
+      "seconds": 0.71
     },
-    "blender/props/make_crate.py": {
-      "assets": {
-        "wooden_crate": {
-          "issues": [],
-          "triangles": 204
-        }
-      },
-      "blender": "5.2.2 LTS",
-      "input": "b405fcb2155acb8c24a1ec27de37859ec122c958a6f88fb3fd416c67efda3495",
-      "outputs": {
-        "assets/models/wooden_crate.glb": "74be44fabb270b7ec6d9c13f84584ca0f5b7c335a46b8508526835bb064f45a0",
-        "blender/props/wooden_crate.blend": "5aa5964562f7f7813b7f96ec02adf92f05d6582c68b35eb893545830113ec186"
-      },
-      "seconds": 0.32
-    },
-    "blender/props/make_tomato.py": {
+    "blender/specs/tomato.toml": {
       "assets": {
         "tomato_stage1": {
           "issues": [],
@@ -60,7 +45,7 @@
         }
       },
       "blender": "5.2.2 LTS",
-      "input": "b22340e52e4b8f947af2ff84a0b0b521bbf16e6883d73d62e848c399d79a88c8",
+      "input": "3146500f5a65b35ac487ceefe2f3f17df76075d2a703669446710a66c6dde80a",
       "outputs": {
         "assets/models/tomato_stage1.glb": "d94750681deba3e04f1fd5101af11a3f2be450435fc35ed7a523a46b0cc5ccc1",
         "assets/models/tomato_stage2.glb": "b4da8a2307c14578382dc9c7b49fb8b0ef614908dd7be57f61ddc314ab67196b",
@@ -68,7 +53,22 @@
         "assets/models/tomato_stage4.glb": "31ab21aac3cb6af5ac675453afc252be1540ede8b5019c411a3b10745f39734e",
         "blender/props/tomato.blend": "560afe817a1fb09d8235afc7193d59b67c6441c9b48aebc90a9e54af5af2a908"
       },
-      "seconds": 1.17
+      "seconds": 0.92
+    },
+    "blender/specs/wooden_crate.toml": {
+      "assets": {
+        "wooden_crate": {
+          "issues": [],
+          "triangles": 204
+        }
+      },
+      "blender": "5.2.2 LTS",
+      "input": "9e5835c1dc31f7ceb3a268a6c1902cf7bc15729d608b8c5cf9398fdf5fcb872a",
+      "outputs": {
+        "assets/models/wooden_crate.glb": "74be44fabb270b7ec6d9c13f84584ca0f5b7c335a46b8508526835bb064f45a0",
+        "blender/props/wooden_crate.blend": "5aa5964562f7f7813b7f96ec02adf92f05d6582c68b35eb893545830113ec186"
+      },
+      "seconds": 0.31
     }
   },
   "schema": 1

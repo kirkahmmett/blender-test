@@ -1,0 +1,48 @@
+# Seladon yeşili, oval, sırlı porselen bonsai saksısı; 4 ayaklı. Toprakta yosun lekeleri.
+material = "porcelain"
+roughness = 0.2
+segments = 32
+scale = [0.18, 0.13]          # oval yarı eksenler (X, Y), m; profil yarıçapları bunun oranı
+color_mode = "glaze"
+
+# (yarıçap oranı, z m) — dış duvardan iç duvara; ilk halka taban
+profile = [
+    [0.86, 0.010],
+    [0.90, 0.016],
+    [0.95, 0.040],
+    [0.975, 0.075],
+    [0.985, 0.092],
+    [1.02, 0.096],
+    [1.02, 0.104],
+    [0.985, 0.108],
+    [0.94, 0.106],
+    [0.92, 0.088],
+]
+
+[colors]
+light = "C6DFCB"
+mid = "A9C9B2"
+dark = "8DAE98"
+
+[glaze]
+rim_t = 0.85        # yükseklik oranı bunun üstünde: açık kenar
+inner_rings = 2     # son iki halka iç duvar (açık)
+
+[feet]
+angles = [35, 145, 215, 325]
+ring = 0.72         # ayakların merkezden uzaklığı (yarı eksen oranı)
+radius = 0.022
+sides = 8
+color_mul = 0.92
+
+[soil]
+mode = "moss"
+z = 0.090
+center_dz = 0.012
+profile = [[0.93, 0.0], [0.76, 0.005], [0.56, 0.008], [0.36, 0.010], [0.16, 0.0115]]
+dark = "77685D"
+mid = "8E7C6E"
+moss = "AFCC9C"
+seed = 11
+freq = 9
+moss_freq = 7

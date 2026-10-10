@@ -15,8 +15,8 @@ Kullanıcı Türkçe konuşur; yanıtları Türkçe ver.
 
 - `BLENDER_EXE = "C:\Program Files (x86)\Steam\steamapps\common\Blender\blender.exe"` (5.2.2 LTS, Steam kurulumu).
 - exp01: `wooden_crate` (204 üçgen, 64 px tahta dokusu + vertex color tonu) üretildi, Godot'ta doğrulandı.
-- exp02: **bonsai, 3 aşama** (`blender/props/make_bonsai.py`). **Stil istisnası**: PS1 kuralları dışında; med poly, smooth, pastel vertex color, `pastel_spatial.gdshader`. Han-kengai (yarı şelale), ardıç bulutları, seladon oval porselen saksı. Aşamalar aynı yolun (TRUNK_PATH) başını kullanır, yani aynı ağacın büyümesi. Üçgen: 2110 / 3640 / 5838 (kullanıcı 5.8k'yı onayladı). `--part pot|stage1|stage2|stage3|all [--export] [--preview p.png] [--front]`.
-- **Domates fidanı, 4 aşama** (`blender/props/make_tomato.py`, 10 Ekim 2026): pastel, med-high poly; fide → genç (bambu çubuk + ip) → çiçekli (sarı çiçek salkımları, tomurcuk, minik yeşil meyve) → olgun (alt salkım pastel kırmızı, orta turuncu-yeşil, üst çiçek). Terakota saksı. Aynı bitkinin büyümesi: düğüm azimutları (137.5°), gövde kıvrımı, salkım düğümleri (6, 8, 11) sabit; boy, yaprak sayı/boyu, olgunluk değişir. Kullanıcı onaylı bütçe `prop_budget`: 2200 / 5500 / 10000 / 13200; şu an 1602 / 3971 / 7370 / 11912. Bileşik yaprak: sap + 1–3 yaprakçık çifti + ara minik yaprakçıklar + uç yaprakçık (tırtıklı, hafif çanak). Malzemeler: tomato_terracotta/soil/stem/leaf/fruit/petal/stake.
+- exp02: **bonsai, 3 aşama** (`blender/specs/bonsai.toml`, aile `families/bonsai.py`). **Stil istisnası**: PS1 kuralları dışında; med poly, smooth, pastel vertex color, `pastel_spatial.gdshader`. Han-kengai (yarı şelale), ardıç bulutları, seladon oval porselen saksı. Aşamalar aynı yolun (TRUNK_PATH) başını kullanır, yani aynı ağacın büyümesi. Üçgen: 2110 / 3640 / 5838 (kullanıcı 5.8k'yı onayladı). `--part pot|stage1|stage2|stage3|all [--export] [--preview p.png] [--front]`.
+- **Domates fidanı, 4 aşama** (`blender/specs/tomato.toml`, aile `families/tomato.py`, 10 Ekim 2026): pastel, med-high poly; fide → genç (bambu çubuk + ip) → çiçekli (sarı çiçek salkımları, tomurcuk, minik yeşil meyve) → olgun (alt salkım pastel kırmızı, orta turuncu-yeşil, üst çiçek). Terakota saksı. Aynı bitkinin büyümesi: düğüm azimutları (137.5°), gövde kıvrımı, salkım düğümleri (6, 8, 11) sabit; boy, yaprak sayı/boyu, olgunluk değişir. Kullanıcı onaylı bütçe `prop_budget`: 2200 / 5500 / 10000 / 13200; şu an 1602 / 3971 / 7370 / 11912. Bileşik yaprak: sap + 1–3 yaprakçık çifti + ara minik yaprakçıklar + uç yaprakçık (tırtıklı, hafif çanak). Malzemeler: tomato_terracotta/soil/stem/leaf/fruit/petal/stake.
 - Önizlemeler `blender/props/previews/` altında.
 - `blender/.gdignore` var: Godot `.blend` kaynaklarını kendisi import etmeye çalışmasın.
 
@@ -29,11 +29,23 @@ Kullanıcı Türkçe konuşur; yanıtları Türkçe ver.
 
 ## Prop üretim akışı (kullanıcının seçimi: A)
 
-Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açık Blender oturumuna dokunulmaz:
+Her şey **arka plan Blender'ında** üretilir; açık Blender oturumuna dokunulmaz.
+
+**Asset = veri + aile + parça + stil (Sprint 2, 10 Ekim 2026; `blender/lib/assetkit.py`):**
+- `blender/specs/<ad>.toml`: asset'in tüm verisi (ölçüler, palet, aşama/varyantlar, adlar, bütçeler). Biçim `assetkit.py` başındaki açıklamada. Her `[[variant]]` bir obje = bir glb.
+- `blender/lib/families/<aile>.py`: algoritma, `build(ctx, variant, collection) -> obj`. Şu an: `crate`, `bonsai`, `tomato` (otsu çubuklu bitki).
+- `blender/lib/parts/`: birden çok ailenin kullandığı parçalar. `pots.py`: tornalanmış saksı + toprak, renk modları `glaze` / `terracotta`, toprak `moss` / `plain`. Saksı verileri `blender/specs/parts/*.toml`; spec'te `pot = "@parts/pot_terracotta"` (kök anahtar, ilk `[tablo]`dan önce yaz — sonra yazılırsa o tabloya girer).
+- `blender/styles/<ad>.toml`: `godot` (galeri shader'ı: ps1/pastel), `[color]` saturation/value/lift, `[mesh]` density. Varsayılanlar (1/1/0/1) hiçbir hesap yapmaz → çıktı bayt bayt aynı. Aileler renkleri `ctx.color(palet_anahtarı)`, segment sayılarını `ctx.style.seg(n)` ile almalı ki stil etkili olsun.
+- Taşıma kanıtı: eski `make_*.py` script'lerinin ürettiği 8 glb, spec'lerden bayt bayt aynı üretildi (manifest "aynı"); `.blend`'ler yeniden kaydedilmedi.
+- **Yeni asset:** mevcut ailedeyse yalnızca yeni bir TOML (ör. sarı çeri domates denemesi: palet + salkımlar + `@parts/pot_celadon_oval`; `previews/demo_spec_cherry_celadon.png`). Yeni bir biçimse yeni aile modülü. Kodla özel durum hâlâ mümkün: `blender/props/make_<ad>.py` (`--build`/`--force` sözleşmesi, propkit akışı) da birim sayılır.
+
+Tek spec'i denemek / önizlemek:
 
 ```
-"<BLENDER_EXE>" --background --factory-startup --python blender/props/make_<ad>.py -- <scratchpad>/<ad>_preview.png
+"<BLENDER_EXE>" --background --factory-startup --python blender/tools/make.py -- blender/specs/<ad>.toml [--part <id>|all] [--preview p.png] [--front] [--style <stil>]
 ```
+
+`--style` yalnızca önizleme içindir (export spec'in stiliyle; ör. `previews/demo_style_muted.png`: doygunluk 0.7, yoğunluk 0.6 → domates 11912 → 9927 üçgen). `--export` yalnızca `--part all` ile (`.blend` tüm varyantları tutar).
 
 **Tek komut (her değişiklikten sonra çalıştır):**
 
@@ -41,7 +53,7 @@ Her prop kendi üretici script'iyle **arka plan Blender'ında** yapılır; açı
 "<BLENDER_EXE>" --background --factory-startup --python blender/tools/build_all.py -- [--only <ad>] [--full] [--jobs N] [--no-godot]
 ```
 
-`blender/props/make_*.py`'leri kendisi bulur. **Artımlı** (Sprint 1, 10 Ekim 2026): `blender/build/manifest.json` (git'te izlenir) her üretici için girdi özetini (şema + Blender sürümü + script + `blender/lib/*.py` hariç buildkit + `export_glb.py`) ve çıktı sha256'larını tutar; girdi ve çıktılar aynıysa atlanır, çıktı silinmiş/dışarıdan değişmişse yeniden derler. Kirli üreticiler **paralel** işçilere bölünür (`blender/tools/worker.py`; ana süreç de işçi; önceki sürelere göre dağıtım); üreticiler süreç içinde `runpy` ile çalışır (`buildkit.run_generator`), sonuçlar `propkit.EVENTS`'ten okunur. Değişmeyen glb'ye dokunulmaz (geçici klasöre export + bayt karşılaştırma) → Godot boşuna import etmez; hiçbir glb değişmediyse Godot adımı atlanır; proje editörde açıksa CLI import yapılmaz. Kalite tablosu manifestteki tüm asset'leri gösterir. Sorun varsa çıkış kodu 1. Ölçümler: değişiklik yok 1.7 s (yalnızca Blender açılışı), tam paralel derleme 3.6 s, tek üretici + Godot ~11 s (Godot import ~5–6 s sabit). Godot yolu `blender/tools/paths.json` (ya da `GODOT_EXE`).
+Üretim birimlerini kendisi bulur: `blender/specs/*.toml` + varsa `blender/props/make_*.py`. **Artımlı** (Sprint 1, 10 Ekim 2026): `blender/build/manifest.json` (git'te izlenir) her birim için girdi özetini (şema + Blender sürümü + birim + spec'in `@` başvuruları ve stili + `blender/lib/**/*.py` (buildkit hariç) + `export_glb.py`) ve çıktı sha256'larını tutar; girdi ve çıktılar aynıysa atlanır, çıktı silinmiş/dışarıdan değişmişse yeniden derler. Kirli üreticiler **paralel** işçilere bölünür (`blender/tools/worker.py`; ana süreç de işçi; önceki sürelere göre dağıtım); üreticiler süreç içinde `runpy` ile çalışır (`buildkit.run_generator`), sonuçlar `propkit.EVENTS`'ten okunur. Değişmeyen glb'ye dokunulmaz (geçici klasöre export + bayt karşılaştırma) → Godot boşuna import etmez; hiçbir glb değişmediyse Godot adımı atlanır; proje editörde açıksa CLI import yapılmaz. Kalite tablosu manifestteki tüm asset'leri gösterir. Sorun varsa çıkış kodu 1. Ölçümler: değişiklik yok 1.7 s (yalnızca Blender açılışı), tam paralel derleme 3.6 s, tek üretici + Godot ~11 s (Godot import ~5–6 s sabit). Godot yolu `blender/tools/paths.json` (ya da `GODOT_EXE`).
 
 **İzleme modu (günlük çalışma için):**
 
@@ -53,17 +65,15 @@ Blender açık kalır; üretici/kit kaydedilince yalnızca etkilenen üretici s�
 
 - **Alt süreç tuzağı:** `Popen(stdout=PIPE)` ile başlatılıp bitene kadar okunmayan süreç, boru dolunca kilitlenir (izleme modunda Godot import'u takıldı). Uzun süren alt süreçlerin çıktısını dosyaya yönlendir.
 
-- **Yeni üretici sözleşmesi:** `make_<ad>.py` `--build` (her şeyi üret + export) ve `--force` kabul etmeli; `propkit.guard_overwrite` → üret → `propkit.save_generated` → `propkit.export_props` sırasını izlemeli. Örnek: `make_crate.py`.
+- **Kod üreticisi sözleşmesi (özel durumlar):** `make_<ad>.py` `--build` (her şeyi üret + export) ve `--force` kabul etmeli; `propkit.guard_overwrite` → üret → `propkit.save_generated` → `propkit.export_props` sırasını izlemeli (`assetkit.run` aynı akışı uygular).
 - **Kalite kontrolü (`propkit.check_object`):** hata = prop_name/style/placement eksik ya da geçersiz, üçgen bütçesi aşımı (`BUDGETS`: ps1 500, pastel 6000), merkez noktası tabanda değil (±1 cm). uyarı = isim snake_case değil, ölçek/dönüş uygulanmamış, merkez izdüşüm dışında, ölçü 2 cm–10 m dışında, doku kare/2'nin kuvveti değil, PS1 dokuda >256 px ya da nearest değil. Sonuç glb'ye `qa` extras'ı olarak gömülür; galeride hata kırmızı, uyarı turuncu etiket; inceleme paneli listeler. `qa` anahtarı hiç yoksa "kontrolden geçmemiş" uyarısı.
 - `save_generated` içerik değişmediyse `.blend`'i yeniden kaydetmez (git'te ikili fark oluşmasın). glb export'u deterministik.
 
-- Çıktılar: `blender/props/<ad>.blend` (kullanıcı açar ya da Append eder), `blender/props/textures/<ad>.png`, `assets/models/<ad>.glb`, önizleme PNG'si (Workbench render).
-- Sonra `experiments/expNN_ad/expNN.tscn` sahnesi `shared/scripts/model_spinner.gd`'yi kullanır; `model_paths` (yan yana dizilir), `style` (0 = PS1, 1 = PASTEL; pastelde malzeme adı sonekine göre `PASTEL_PRESETS`), `spacing`, `spin_speed` ayarlanır. Pencereli `--write-movie` ile karelere bakıp doğrula.
-- Örnek ve şablon: `blender/props/make_crate.py` (bmesh ile kutu parçaları, parça başına UV yönü, prosedürel piksel doku, vertex color ile ton + sahte AO).
+- Çıktılar: `blender/props/<blend>.blend` (kullanıcı açar ya da Append eder), `blender/props/textures/<ad>.png`, `assets/models/<obje>.glb`, önizleme PNG'si (EEVEE, `meshkit.render_preview`).
+- Galeri (exp03) yeni glb'leri kendiliğinden gösterir. Tek modeli döndürerek görmek için `shared/scripts/model_spinner.gd` (`model_paths`, `style`, `spacing`, `spin_speed`).
 - **Elle düzenleme koruması (`blender/lib/propkit.py`):** Üretici script'ler `.blend`'i `propkit.save_generated()` ile kaydeder; içerik parmak izi "propkit_fingerprint" Text bloğuna yazılır (scene property değil: glTF'e sızar). Üretimden önce `propkit.guard_overwrite()` dosyayı açıp karşılaştırır; içerik değiştiyse **durur**. Yalnızca açıp kaydetmek uyarı vermez. `--force` eskisini `blender/props/_backup/`'a (git dışı) yedekleyip üstüne yazar; **`--force`'u kullanıcıya sormadan kullanma.** Elle düzenlenmiş dosyayı Godot'a göndermek için yeniden üretme, yalnızca export et: `"<BLENDER_EXE>" --background blender/props/<ad>.blend --python blender/tools/export_props.py` (`prop_style` olan her obje orijinde `assets/models/<obje adı>.glb`).
 - Üretmeden önce MCP ile (ya da süreç listesinden) kullanıcının Blender'ında aynı `.blend`'in açık olmadığını kontrol et; açıksa kullanıcı sonra kaydedince bizim yazdığımızı ezer.
-- `make_bonsai.py --export` yalnızca `--part all` ile çalışır (bonsai.blend üç aşamayı birlikte tutar).
-- **Galeri bilgisi (zorunlu):** Her prop objesine custom property yaz: `obj["prop_name"]` (Türkçe görünen ad), `obj["prop_style"]` (`"ps1"` | `"pastel"`), `obj["prop_placement"]` (`"floor"` | `"pedestal"`). glTF extras olarak gider; Godot `MeshInstance3D`'nin `extras` metadata'sına koyar (`PropStyle.extras()` okur). Bilgisi olmayan model galeride PS1 + yere konur.
+- **Galeri bilgisi (zorunlu; spec'ten `assetkit.run` yazar):** Her prop objesinde custom property: `obj["prop_name"]` (Türkçe görünen ad), `obj["prop_style"]` (`"ps1"` | `"pastel"`), `obj["prop_placement"]` (`"floor"` | `"pedestal"`). glTF extras olarak gider; Godot `MeshInstance3D`'nin `extras` metadata'sına koyar (`PropStyle.extras()` okur). Bilgisi olmayan model galeride PS1 + yere konur.
 
 ## Galeri (exp03) — FPS ile propları gezme
 
@@ -95,7 +105,13 @@ blender-test/
 ├─ blender/lib/buildkit.py       # derleme çekirdeği: girdi özeti, manifest, süreç içi çalıştırma, Godot
 ├─ blender/build/manifest.json   # derleme kaydı (izlenir); tmp/ git dışı
 ├─ blender/tools/paths.json      # Godot exe yolu
-├─ blender/props/               # make_<ad>.py üreticiler, <ad>.blend, textures/, _backup/ (git dışı)
+├─ blender/specs/               # asset spec'leri (TOML); parts/ ortak parça verileri (saksılar)
+├─ blender/styles/              # stil tokenları (pastel, ps1)
+├─ blender/lib/assetkit.py      # spec → asset üretim akışı, Style, Ctx
+├─ blender/lib/families/        # aileler: crate, bonsai, tomato
+├─ blender/lib/parts/           # ortak parçalar: pots (saksı + toprak)
+├─ blender/tools/make.py        # tek spec'i üret / önizle (--style)
+├─ blender/props/               # <ad>.blend kaynakları, textures/, previews/, _backup/ (git dışı)
 ├─ assets/models/               # Blender'dan gelen .glb dosyaları (elle düzenleme yok)
 ├─ shared/shaders/ps1_spatial.gdshader
 ├─ shared/shaders/pastel_common.gdshaderinc # pastel gövdesi (iki shader include eder)

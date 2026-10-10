@@ -1,0 +1,98 @@
+# Bonsai — han-kengai (yarı şelale), ardıç bulutları, seladon porselen saksı. 3 aşama:
+# aynı ağacın büyümesi (aşamalar gövde yolunun başını kullanır).
+pot = "@parts/pot_celadon_oval"       # kök anahtar: ilk [tablo] başlığından önce olmalı
+
+[asset]
+family = "bonsai"
+blend = "bonsai"
+style = "pastel"
+placement = "pedestal"
+material_prefix = "bonsai"
+spacing = 0.7
+
+[palette]
+bark_dark = "857469"
+bark = "9E8D83"
+bark_light = "BBADA3"
+leaf_shadow = "86AA90"
+leaf = "A3C6A2"
+leaf_light = "CDE6C0"
+
+[tree]
+seed = 11
+# Olgun gövdenin yolu: saksının -X yanından yükselir, kemer yapar, +X kenarını aşıp
+# saksı tabanı hizasına kadar sarkar.
+trunk_path = [
+    [-0.050, 0.000, 0.088],
+    [-0.045, 0.006, 0.140],
+    [-0.020, -0.012, 0.195],
+    [0.030, 0.008, 0.222],
+    [0.095, -0.006, 0.215],
+    [0.160, 0.014, 0.185],
+    [0.215, -0.004, 0.135],
+    [0.250, 0.012, 0.085],
+    [0.280, -0.006, 0.045],
+]
+# Dallar: [gövdedeki konum s, yan ±Y, yukarı, dışarı (+X), uzunluk, çıktığı aşama, bulut yarıçapı]
+branches = [
+    [0.12, -1, 0.35, -0.6, 0.08, 3, 0.060],   # dengeleyici arka dal
+    [0.22, 1, 0.25, 0.0, 0.09, 1, 0.068],
+    [0.30, 0, 1.00, -0.2, 0.06, 2, 0.065],    # tepe (apeks)
+    [0.40, -1, 0.20, 0.3, 0.10, 1, 0.072],
+    [0.52, 1, 0.15, 0.5, 0.10, 2, 0.072],
+    [0.63, -1, 0.10, 0.5, 0.10, 3, 0.068],
+    [0.74, 1, 0.10, 0.6, 0.09, 3, 0.062],
+    [0.85, -1, 0.05, 0.6, 0.08, 3, 0.058],
+]
+age_scale = [0.7, 0.88, 1.0]   # dalın yaşına (aşama - çıktığı aşama) göre boyut
+roots = [[200, 0.070], [140, 0.055], [250, 0.060], [90, 0.050]]   # [açı°, uzunluk]
+
+# Aşamalar: gövde uzunluğu (tam yolun oranı), taban/uç yarıçapı, kesit kenarı, halka sayısı,
+# kök sayısı ve ölçeği, taban genişlemesi (nebari), uç bulutu yarıçapı, topraktaki yosun
+[[variant]]
+id = "stage1"
+object = "bonsai_stage1"
+name = "Bonsai — 1. aşama (fidan)"
+stage = 1
+moss = 0.15
+trunk_frac = 0.45
+r_base = 0.006
+r_tip = 0.0025
+sides = 6
+rings = 12
+roots = 0
+root_scale = 0.6
+flare = 0.0
+tip_pad = 0.030
+
+[[variant]]
+id = "stage2"
+object = "bonsai_stage2"
+name = "Bonsai — 2. aşama (orta)"
+stage = 2
+moss = 0.45
+trunk_frac = 0.72
+r_base = 0.018
+r_tip = 0.0040
+sides = 8
+rings = 22
+roots = 2
+root_scale = 0.6
+flare = 0.35
+tip_pad = 0.045
+
+[[variant]]
+id = "stage3"
+object = "bonsai_stage3"
+name = "Bonsai — 3. aşama (olgun)"
+stage = 3
+moss = 0.8
+trunk_frac = 1.00
+r_base = 0.030
+r_tip = 0.0085
+sides = 10
+rings = 32
+roots = 4
+root_scale = 1.0
+flare = 0.8
+tip_pad = 0.068

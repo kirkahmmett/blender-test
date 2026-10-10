@@ -49,6 +49,10 @@ def main():
     if not gens:
         print("[build_all] üretici bulunamadı")
         return 1
+    if not args.only:   # silinmiş / taşınmış birimlerin kayıtları manifestte kalmasın
+        for stale in sorted(set(manifest["generators"]) - set(gens)):
+            print(f"[build_all] manifestten çıkarıldı (birim artık yok): {stale}")
+            del manifest["generators"][stale]
 
     dirty = {}
     for g in gens:

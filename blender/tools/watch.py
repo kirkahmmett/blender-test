@@ -3,7 +3,7 @@
     blender --background --factory-startup --python blender/tools/watch.py -- [--no-godot] [--max-seconds N]
 
 Blender açık kalır (açılış maliyeti bir kez ödenir); üreticiler bu süreçte çalışır ve kit
-modülleri her çalıştırmada yeniden yüklenir. İzlenen dosyalar: blender/props/make_*.py ve
+modülleri her çalıştırmada yeniden yüklenir. İzlenen dosyalar: spec/stil TOML'ları, make_*.py ve
 ortak kit (blender/lib/*.py, blender/export_glb.py). Ortak kit değişirse hepsi derlenir.
 
 Godot: proje editörde açıksa hiçbir şey yapılmaz; editör pencereye geçince değişen glb'leri

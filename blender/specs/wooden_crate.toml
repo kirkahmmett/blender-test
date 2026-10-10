@@ -1,0 +1,23 @@
+# Ahşap sandık (PS1): gövde + 12 kenar kirişi + 4 yanda çapraz destek, 64 px tahta dokusu.
+[asset]
+family = "crate"
+blend = "wooden_crate"
+style = "ps1"
+placement = "floor"
+material_prefix = "wooden_crate"
+
+[[variant]]
+id = "default"
+object = "wooden_crate"
+name = "Ahşap sandık"
+size = 0.8          # dış ölçü (m)
+beam = 0.08         # kiriş kesiti (m)
+protrude = 0.02     # kirişlerin gövdeden taşma payı (m)
+tex_px = 64
+tex_world = 0.5     # doku bir tekrarda kaç metreyi kaplar
+planks = 4          # dokudaki tahta sayısı
+seed = 7
+body_tint = [1.0, 1.0, 1.0]
+beam_tint = [0.72, 0.6, 0.5]
+# tahta tonları (sRGB 0..1), tahta başına sırayla
+wood = [[0.62, 0.43, 0.26], [0.56, 0.38, 0.22], [0.66, 0.47, 0.29], [0.52, 0.35, 0.21]]

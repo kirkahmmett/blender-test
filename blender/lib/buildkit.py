@@ -4,9 +4,10 @@ build_all.py (tek komut) ve watch.py (izleme modu) bunu kullanır.
 
 Artımlı derleme
 ---------------
-İş birimi üretici script'tir (blender/props/make_*.py); biri birden çok asset üretebilir.
-Girdi özeti = şema sürümü + Blender sürümü + script + ortak kit dosyaları (blender/lib/*.py,
-blender/export_glb.py). Manifest (blender/build/manifest.json) her üretici için girdi özetini
+İş birimi ("üretici"): asset spec'i (blender/specs/*.toml, bkz. assetkit) ya da özel durumlar için
+kod (blender/props/make_*.py); biri birden çok asset üretebilir. Girdi özeti = şema sürümü +
+Blender sürümü + birim dosyası + spec'in başvurduğu dosyalar (saksı spec'leri, stil) + ortak
+kod (blender/lib/**/*.py, buildkit hariç; blender/export_glb.py). Manifest (blender/build/manifest.json) her üretici için girdi özetini
 ve çıktıların (glb + blend) sha256'sını tutar. Girdi aynı ve çıktılar diskte aynıysa üretici
 atlanır. Çıktı elle değiştirildiyse (ör. export_props ile) yeniden derlenir; .blend elle
 düzenlendiyse propkit koruması üretimi durdurur ve "atlandı" raporlanır.
@@ -35,6 +36,8 @@ LIB_DIR = os.path.dirname(os.path.abspath(__file__))
 BLENDER_DIR = os.path.dirname(LIB_DIR)
 PROJECT_DIR = os.path.dirname(BLENDER_DIR)
 PROPS_DIR = os.path.join(BLENDER_DIR, "props")
+SPECS_DIR = os.path.join(BLENDER_DIR, "specs")
+STYLES_DIR = os.path.join(BLENDER_DIR, "styles")
 BUILD_DIR = os.path.join(BLENDER_DIR, "build")
 MANIFEST_PATH = os.path.join(BUILD_DIR, "manifest.json")
 TOOLS_DIR = os.path.join(BLENDER_DIR, "tools")
@@ -63,29 +66,42 @@ def file_hash(path):
 # ---------------------------------------------------------------- girdiler ve manifest
 
 def generators(only=()):
-    gens = sorted(glob.glob(os.path.join(PROPS_DIR, "make_*.py")))
+    """Üretim birimleri: asset spec'leri (blender/specs/*.toml) + kod üreticileri (make_*.py)."""
+    gens = sorted(glob.glob(os.path.join(SPECS_DIR, "*.toml")))
+    gens += sorted(glob.glob(os.path.join(PROPS_DIR, "make_*.py")))
     if only:
         gens = [g for g in gens if any(o in os.path.basename(g) for o in only)]
     return [rel(g) for g in gens]
 
 
 def common_inputs():
-    """Üreticilerin kullandığı ortak kod. buildkit'in kendisi hariç: derleme aracını değiştirmek
-    asset'leri yeniden ürettirmesin."""
-    files = sorted(f for f in glob.glob(os.path.join(LIB_DIR, "*.py"))
-                   if os.path.basename(f) != "buildkit.py")
+    """Üreticilerin kullandığı ortak kod (aileler, parçalar dahil). buildkit'in kendisi hariç:
+    derleme aracını değiştirmek asset'leri yeniden ürettirmesin."""
+    files = sorted(f for f in glob.glob(os.path.join(LIB_DIR, "**", "*.py"), recursive=True)
+                   if os.path.basename(f) != "buildkit.py" and "__pycache__" not in f)
     files.append(os.path.join(BLENDER_DIR, "export_glb.py"))
     return [rel(f) for f in files]
 
 
+def unit_deps(gen):
+    """Spec'in başvurduğu dosyalar (saksı spec'leri, stil); kod üreticisi için boş."""
+    if not gen.endswith(".toml"):
+        return []
+    import assetkit
+    _, deps = assetkit.load_spec(absolute(gen))
+    return sorted({rel(d) for d in deps})
+
+
 def watched_files():
-    """İzleme modunun baktığı dosyalar: üreticiler + ortak girdiler."""
-    return generators() + common_inputs()
+    """İzleme modunun baktığı dosyalar: birimler + tüm spec/stil dosyaları + ortak kod."""
+    data = glob.glob(os.path.join(SPECS_DIR, "**", "*.toml"), recursive=True)
+    data += glob.glob(os.path.join(STYLES_DIR, "*.toml"))
+    return sorted(set(generators()) | {rel(f) for f in data}) + common_inputs()
 
 
 def input_hash(gen, blender_version):
     h = hashlib.sha256(f"schema={SCHEMA}\nblender={blender_version}\n".encode())
-    for path in [gen] + common_inputs():
+    for path in [gen] + unit_deps(gen) + common_inputs():
         h.update(path.encode() + b"\0")
         with open(absolute(path), "rb") as f:
             h.update(f.read())
@@ -120,8 +136,12 @@ def dirty_reason(gen, manifest, blender_version):
     entry = manifest["generators"].get(gen)
     if entry is None:
         return "yeni (manifestte yok)"
-    if entry["input"] != input_hash(gen, blender_version):
-        return "girdi değişti (script, kit ya da Blender sürümü)"
+    try:
+        current = input_hash(gen, blender_version)
+    except Exception as e:  # bozuk TOML / eksik başvuru: derlemede hatasıyla görünsün
+        return f"girdi okunamadı: {e}"
+    if entry["input"] != current:
+        return "girdi değişti (spec, kod ya da Blender sürümü)"
     for path, digest in entry["outputs"].items():
         if not os.path.isfile(absolute(path)):
             return f"çıktı eksik: {path}"
@@ -149,8 +169,11 @@ def run_generator(gen, extra_args=()):
     status: "üretildi" | "atlandı" (elle düzenlenmiş .blend korundu) | "ÇÖKTÜ"."""
     import bpy
 
-    for name in KIT_MODULES:
-        sys.modules.pop(name, None)
+    # ortak kodun taze kopyası (aileler, parçalar dahil): izleme modunda düzenleme görünsün
+    for name, mod in list(sys.modules.items()):
+        path = getattr(mod, "__file__", None) or ""
+        if name in KIT_MODULES or (path and os.path.abspath(path).startswith(LIB_DIR) and name != "buildkit"):
+            sys.modules.pop(name, None)
     for path in (LIB_DIR, BLENDER_DIR):
         if path not in sys.path:
             sys.path.insert(0, path)
@@ -163,7 +186,11 @@ def run_generator(gen, extra_args=()):
     t0 = time.perf_counter()
     try:
         with contextlib.redirect_stdout(buf):
-            runpy.run_path(absolute(gen), run_name="__main__")
+            if gen.endswith(".toml"):
+                import assetkit
+                assetkit.run(absolute(gen), ["--build", *extra_args])
+            else:
+                runpy.run_path(absolute(gen), run_name="__main__")
     except BaseException:  # SystemExit dahil: üretici süreci düşürmesin
         error = traceback.format_exc()
     finally:

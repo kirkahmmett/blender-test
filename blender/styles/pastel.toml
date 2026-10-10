@@ -1,0 +1,13 @@
+# Pastel, yumuşak stil (bonsai, domates). Galeride pastel_spatial / pastel_leaf shader'ları.
+godot = "pastel"
+
+# Palet dönüşümü (sRGB): doygunluk ve değer çarpanı, beyaza karışım (lift).
+# Varsayılanlar (1, 1, 0) hiçbir şey yapmaz; stil değişince tüm katalog tek komutla yeniden üretilir.
+[color]
+saturation = 1.0
+value = 1.0
+lift = 0.0
+
+# Poly yoğunluğu: saksı segmentleri, gövde/sap kenarları, meyve segmentleri bu çarpanla ölçeklenir.
+[mesh]
+density = 1.0

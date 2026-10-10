@@ -1,0 +1,44 @@
+# Klasik pastel terakota saksı: üstte kalın kenar bandı, bandın altında gölge.
+material = "terracotta"
+roughness = 0.75
+segments = 40
+scale = [1.0, 1.0]            # profil yarıçapları mutlak (m)
+color_mode = "terracotta"
+
+# (yarıçap m, z m) — dış duvardan iç duvara; ilk halka taban
+profile = [
+    [0.072, 0.000],
+    [0.076, 0.004],
+    [0.082, 0.040],
+    [0.090, 0.090],
+    [0.097, 0.140],
+    [0.099, 0.146],   # bant altı
+    [0.110, 0.150],
+    [0.112, 0.178],   # bant üstü dış
+    [0.106, 0.183],
+    [0.099, 0.181],   # iç kenar
+    [0.094, 0.162],   # iç duvar toprağa iner
+]
+
+[colors]
+light = "F0C3A8"
+mid = "E2A88B"
+dark = "C98E74"
+
+[terracotta]
+band = [5, 8]       # bu halkalar arası açık kenar bandı
+shadow_ring = 4     # bandın altındaki gölge halkası
+inner_rings = 3
+cap_mul = 0.9       # taban kapağı: koyu renk × bu
+noise_freq = 40
+noise_seed = 3
+
+[soil]
+mode = "plain"
+z = 0.164
+center_dz = 0.0085
+profile = [[0.097, 0.0], [0.075, 0.004], [0.050, 0.007], [0.025, 0.008]]
+dark = "6F5C52"
+mid = "8C7567"
+seed = 5
+freq = 22           # seyrek mesh: düşük frekans (yüksekte yıldız deseni çıkar)

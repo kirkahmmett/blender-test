@@ -1,0 +1,10 @@
+# PS1 tarzı (sandık): galeride ps1_spatial shader'ı (köşe titremesi, affine doku, renk kuantizasyonu).
+godot = "ps1"
+
+[color]
+saturation = 1.0
+value = 1.0
+lift = 0.0
+
+[mesh]
+density = 1.0
